@@ -43,17 +43,31 @@ import okhttp3.Cookie;
 import okhttp3.internal.http.HttpDate;
 
 /**
- * ログイン用のWebViewClient
+ * ユーザダッシュボードログイン時の処理を実装したWebViewClient
  */
 public class LoginClient extends WebViewClient {
 
+    /**
+     * コールバックメソッド
+     */
     public interface LoginCallBack {
+
+        /**
+         * ログイン成功時の処理
+         *
+         * @param cookies ログインCookie
+         */
         void onLoginSuccess(List<Cookie> cookies);
     }
 
 
     private final LoginCallBack callBack;
 
+    /**
+     * コンストラクタ
+     *
+     * @param callBack コールバックメソッド
+     */
     public LoginClient(LoginCallBack callBack) {
         this.callBack = callBack;
     }

@@ -31,8 +31,6 @@
     <uses-feature android:name="android.hardware.microphone" android:required="true" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
     <application
         android:allowBackup="true"
@@ -41,7 +39,7 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
-        android:name="jp.co.atware.trial_app.util.Config">
+        android:name="jp.co.atware.trial_app.chat.ChatApplication">
         <activity android:name="jp.co.atware.trial_app.MainActivity"
             android:screenOrientation="portrait">
             <intent-filter>
@@ -50,7 +48,6 @@
             </intent-filter>
         </activity>
         <activity android:name="jp.co.atware.trial_app.AppInfoActivity"
-            android:label="@string/app_info"
             android:screenOrientation="portrait"/>
     </application>
 

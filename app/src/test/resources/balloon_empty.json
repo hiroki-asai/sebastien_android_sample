@@ -1,0 +1,19 @@
+{
+  "type": "nlu_result",
+  "version": "sebastien-0.1.0",
+  "speaker": "satoru",
+  "systemText": {
+    "utterance": "解析失敗",
+    "expression": "解析成功"
+  },
+  "option": {
+    "switchAgent": {
+      "agentId": "spftalk",
+      "agentType": "1",
+      "afterUtt": "true"
+    },
+    "postback": {
+      "payload": "#DDB"
+    }
+  }
+}

@@ -29,22 +29,64 @@ package jp.co.atware.trial_app.chat;
 
 import com.nttdocomo.flow.EventHandler;
 
+import jp.co.atware.trial_app.R;
+import jp.co.atware.trial_app.balloon.AudioAdapter;
+import jp.co.atware.trial_app.chat.ChatController.ChatMode;
+import jp.co.atware.trial_app.chat.ChatController.ChatStatus;
+
 /**
- * 対話開始ハンドラの基底クラス
+ * 対話開始時の処理
  */
-public abstract class ChatStartHandler extends EventHandler {
+class ChatStartHandler extends EventHandler {
+
+    final ChatMode mode;
+    final Object data;
 
     /**
-     * 対話モード
+     * 音声対話用のインスタンスを生成
+     *
+     * @return ChatStartHandlerインスタンス
      */
-    public enum ChatMode {
-        VOICE, TEXT;
+    static ChatStartHandler forVoiceMode() {
+        return new ChatStartHandler(ChatMode.VOICE, null);
     }
 
     /**
-     * 対話モードを取得
+     * テキストチャット用のインスタンスを生成
      *
-     * @return 対話モード
+     * @param data 送信データ
+     * @return ChatStartHandlerインスタンス
      */
-    public abstract ChatMode getMode();
+    static ChatStartHandler forTextMode(Object data) {
+        return new ChatStartHandler(ChatMode.TEXT, data);
+    }
+
+    /**
+     * コンストラクタ
+     *
+     * @param mode 対話モード
+     * @param data 送信データ
+     */
+    private ChatStartHandler(ChatMode mode, Object data) {
+        this.mode = mode;
+        this.data = data;
+    }
+
+    @Override
+    public void run() {
+        ChatController chat = ChatController.getInstance();
+        chat.setStatus(ChatStatus.START);
+        if (mode == ChatMode.VOICE) {
+            chat.setAutoStop();
+            if (AudioAdapter.getInstance().isPlaying()) {
+                ChatApplication.getInstance().mute();
+            } else {
+                chat.setSubtitle(R.string.ready_to_talk);
+            }
+        } else {
+            ChatApplication.getInstance().put(data);
+            chat.setWaiting();
+        }
+    }
+
 }

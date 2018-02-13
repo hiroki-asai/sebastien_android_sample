@@ -27,34 +27,38 @@
 
 package jp.co.atware.trial_app.util;
 
-import android.app.Application;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 
+import jp.co.atware.trial_app.chat.ChatApplication;
+
 /**
  * 設定情報
  */
-public class Config extends Application {
+public class Config {
 
-    private static Config INSTANCE;
+    private static volatile Config INSTANCE = null;
 
+    /**
+     * Singletonインスタンスを取得
+     *
+     * @return Configインスタンス
+     */
     public static Config getInstance() {
+        if (INSTANCE == null) {
+            synchronized (Config.class) {
+                if (INSTANCE == null) {
+                    INSTANCE = new Config();
+                }
+            }
+        }
         return INSTANCE;
     }
 
-    public static Config getInstance(Context context) {
-        return INSTANCE;
-    }
-
-    private SharedPreferences config;
-
-    public void onCreate() {
-        super.onCreate();
-        config = getApplicationContext().getSharedPreferences("config", Context.MODE_PRIVATE);
-        INSTANCE = this;
-    }
-
+    /**
+     * SharedPreferencesのキー値と初期値を定義
+     */
     public enum Keys {
         SSL("true"),
         OCSP("true"),
@@ -71,68 +75,164 @@ public class Config extends Application {
         }
     }
 
+    private SharedPreferences config;
+
+    /**
+     * コンストラクタ
+     */
+    private Config() {
+        this.config = ChatApplication.getInstance().getApplicationContext()
+                .getSharedPreferences("config", Context.MODE_PRIVATE);
+    }
+
+    /**
+     * SSL使用の可否を取得
+     *
+     * @return SSLを使用する場合にtrue
+     */
     public boolean isSSL() {
         return Boolean.valueOf(get(Keys.SSL));
     }
 
+    /**
+     * SSL使用の可否を設定
+     *
+     * @param ssl SSLを使用する場合にtrue
+     * @return SSL使用の可否が変更された場合にtrue
+     */
     public boolean setSSL(Boolean ssl) {
         return set(Keys.SSL, ssl.toString());
     }
 
+    /**
+     * OCSP使用の可否を取得
+     *
+     * @return OCSPを使用する場合にtrue
+     */
     public boolean isOCSP() {
         return Boolean.valueOf(get(Keys.OCSP));
     }
 
+    /**
+     * OCSP使用の可否を設定
+     *
+     * @param ocsp OCSPを使用する場合にtrue
+     * @return OCSP使用の可否が変更された場合にtrue
+     */
     public boolean setOCSP(Boolean ocsp) {
         return set(Keys.OCSP, ocsp.toString());
     }
 
+    /**
+     * ホスト名を取得
+     *
+     * @return ホスト名
+     */
     public String getHost() {
         return get(Keys.HOST);
     }
 
+    /**
+     * ホスト名を設定
+     *
+     * @param host ホスト名
+     * @return ホスト名が変更された場合にtrue
+     */
     public boolean setHost(String host) {
         return set(Keys.HOST, host);
     }
 
+    /**
+     * ポート番号を取得
+     *
+     * @return ポート番号
+     */
     public Integer getPort() {
         return Integer.valueOf(get(Keys.PORT));
     }
 
+    /**
+     * ポート番号を設定
+     *
+     * @param port ポート番号
+     * @return ポート番号が変更された場合にtrue
+     */
     public boolean setPort(String port) {
         return set(Keys.PORT, port);
     }
 
+    /**
+     * URLパスを取得
+     *
+     * @return URLパス
+     */
     public String getPath() {
         return get(Keys.PATH);
     }
 
+    /**
+     * URLパスを設定
+     *
+     * @param path URLパス
+     * @return URLパスが変更された場合にtrue
+     */
     public boolean setPath(String path) {
         return set(Keys.PATH, path);
     }
 
+    /**
+     * アクセストークンを取得
+     *
+     * @return アクセストークン
+     */
     public String getAccessToken() {
         return get(Keys.ACCESS_TOKEN);
     }
 
+    /**
+     * アクセストークンを設定
+     *
+     * @param accessToken アクセストークン
+     * @return アクセストークンが変更された場合にtrue
+     */
     public boolean setAccessToken(String accessToken) {
         return set(Keys.ACCESS_TOKEN, accessToken);
     }
 
+    /**
+     * リフレッシュトークンを取得
+     *
+     * @return リフレッシュトークン
+     */
     public String getRefreshToken() {
         return get(Keys.REFRESH_TOKEN);
     }
 
+    /**
+     * リフレッシュトークンを設定
+     *
+     * @param refreshToken リフレッシュトークン
+     * @return リフレッシュトークンが変更された場合にtrue
+     */
     public boolean setRefreshToken(String refreshToken) {
         return set(Keys.REFRESH_TOKEN, refreshToken);
     }
 
+    /**
+     * アクセストークンを削除
+     */
     public void removeAccessToken() {
         Editor editor = config.edit();
         editor.remove(Keys.ACCESS_TOKEN.name());
         editor.apply();
     }
 
+    /**
+     * SharedPreferencesから値を取得
+     *
+     * @param key キー値
+     * @return 値
+     */
     private String get(Keys key) {
         String value = config.getString(key.name(), null);
         if (isEmpty(value)) {
@@ -146,6 +246,13 @@ public class Config extends Application {
         return value;
     }
 
+    /**
+     * SharedPreferencesに値を保存
+     *
+     * @param key   キー値
+     * @param value 値
+     * @return 値が変更された場合にtrue
+     */
     private boolean set(Keys key, String value) {
         if (isEmpty(value) || !isChanged(key, value)) {
             return false;
@@ -156,10 +263,23 @@ public class Config extends Application {
         return true;
     }
 
+    /**
+     * 空文字列判定
+     *
+     * @param s 文字列
+     * @return 文字列が空の場合にtrue
+     */
     private boolean isEmpty(String s) {
         return s == null || s.trim().isEmpty();
     }
 
+    /**
+     * 保存された値が変更されたかを判定
+     *
+     * @param key      キー値
+     * @param newValue 新しい値
+     * @return 保存された値が変更された場合にtrue
+     */
     private boolean isChanged(Keys key, String newValue) {
         String oldValue = get(key);
         return isEmpty(oldValue) || !oldValue.equals(newValue.trim());

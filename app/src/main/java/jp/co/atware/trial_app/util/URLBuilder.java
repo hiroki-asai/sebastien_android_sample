@@ -28,7 +28,7 @@
 package jp.co.atware.trial_app.util;
 
 /**
- * URLにパラメータ文字列を追加
+ * パラメータを追加したURLを生成
  */
 public class URLBuilder {
 

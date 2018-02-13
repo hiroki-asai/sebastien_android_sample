@@ -62,10 +62,23 @@ import static jp.co.atware.trial_app.util.URLConstants.VALUE_CLIENT_SECRET;
 
 public class ApiClient implements CookieJar {
 
+    /**
+     * コールバックメソッド
+     */
     public interface ApiCallBack {
 
-        void onRequestSuccess();
+        /**
+         * アクセストークン取得成功時の処理
+         *
+         * @param accessToken アクセストークン
+         */
+        void onRequestSuccess(String accessToken);
 
+        /**
+         * アクセストークン取得失敗時の処理
+         *
+         * @param message エラーメッセージ
+         */
         void onRequestFailed(String message);
     }
 
@@ -74,7 +87,12 @@ public class ApiClient implements CookieJar {
     private final OkHttpClient client = new OkHttpClient().newBuilder().cookieJar(this).build();
     private final Handler handler = new Handler(Looper.getMainLooper());
 
-
+    /**
+     * コンストラクタ
+     *
+     * @param cookies  ユーザダッシュボードログイン時のCookie
+     * @param callBack コールバックメソッド
+     */
     public ApiClient(List<Cookie> cookies, ApiCallBack callBack) {
         this.cookies = cookies;
         this.callBack = callBack;
@@ -106,7 +124,7 @@ public class ApiClient implements CookieJar {
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 if (saveTokens(response)) {
-                    // デバイストークンが更新出来た事を通知
+                    // アクセストークンの更新を通知
                     success();
                 } else {
                     failed("update_device_token failed.");
@@ -184,7 +202,7 @@ public class ApiClient implements CookieJar {
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 if (saveTokens(response)) {
-                    // デバイストークンが取得出来た事を通知
+                    // アクセストークンの取得を通知
                     success();
                 } else {
                     failed("req_device_token failed.");
@@ -246,7 +264,7 @@ public class ApiClient implements CookieJar {
         handler.post(new Runnable() {
             @Override
             public void run() {
-                callBack.onRequestSuccess();
+                callBack.onRequestSuccess(Config.getInstance().getAccessToken());
             }
         });
     }

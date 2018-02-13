@@ -1,0 +1,14 @@
+{
+  "type": "nlu_result",
+  "systemText": {
+    "utterance": "解析失敗",
+    "expression": "解析成功"
+  },
+  "option": {
+    "balloon": [
+      {
+        "type": "template"
+      }
+    ]
+  }
+}

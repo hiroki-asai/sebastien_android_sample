@@ -43,7 +43,7 @@ public class Progress extends DialogFragment {
      * インスタンスを生成
      *
      * @param message    表示メッセージ
-     * @param cancelable キャンセル可とする場合にtrue
+     * @param cancelable キャンセル可の場合にtrue
      * @return Progressインスタンス
      */
     public static Progress newInstance(String message, boolean cancelable) {

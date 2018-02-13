@@ -28,11 +28,24 @@
 <resources>
 
     <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <!-- Customize your theme here. -->
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
     </style>
+
+    <style name="AppTheme.MyToolBar" parent="ThemeOverlay.AppCompat.ActionBar">
+        <item name="title">@string/app_name</item>
+        <item name="subtitle">@string/stop</item>
+        <item name="android:textColorPrimary">@color/white</item>
+        <item name="android:textColorSecondary">@color/user_balloon</item>
+        <item name="android:colorBackground">@color/black</item>
+    </style>
+
+    <style name="AppTheme.MySeekBar" parent="Widget.AppCompat.SeekBar">
+        <item name="android:disabledAlpha">1.0</item>
+    </style>
+
 
 </resources>

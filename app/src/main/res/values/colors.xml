@@ -30,5 +30,10 @@
     <color name="colorPrimary">#3F51B5</color>
     <color name="colorPrimaryDark">#303F9F</color>
     <color name="colorAccent">#FF4081</color>
-    <color name="expertAgent">#FFD700</color>
+    <color name="expertAgent">#EEE8AA</color>
+    <color name="ai_balloon">#D3D3D3</color>
+    <color name="user_balloon">#6495ED</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="button_pressed">#F5F5F5</color>
 </resources>

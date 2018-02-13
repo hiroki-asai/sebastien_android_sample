@@ -31,85 +31,59 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Process;
 import android.support.annotation.NonNull;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.view.Menu;
+import android.support.v7.widget.Toolbar.OnMenuItemClickListener;
 import android.view.MenuItem;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import jp.co.atware.trial_app.chat.ChatApplication;
 import jp.co.atware.trial_app.chat.ChatController;
-import jp.co.atware.trial_app.fragment.ConfigDialog;
-import jp.co.atware.trial_app.fragment.InitAuthDialog;
-import jp.co.atware.trial_app.fragment.KillProcessDialog;
+import jp.co.atware.trial_app.fragment.EditConfig;
+import jp.co.atware.trial_app.fragment.Exit;
+import jp.co.atware.trial_app.fragment.ResetAccessToken;
+import jp.co.atware.trial_app.fragment.UserDashboard;
+import jp.co.atware.trial_app.util.Config;
 import jp.co.atware.trial_app.util.URLConstants;
 
-import static android.Manifest.permission.READ_EXTERNAL_STORAGE;
 import static android.Manifest.permission.RECORD_AUDIO;
-import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 import static android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN;
 
 /**
- * 対話アプリ
+ * 対話アプリ画面
  */
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements OnMenuItemClickListener {
 
     private static final int REQUEST_CODE = 1000;
 
-    public ChatController controller;
+    private ChatApplication app;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().setSoftInputMode(SOFT_INPUT_STATE_ALWAYS_HIDDEN);
         setContentView(R.layout.activity_main);
-        controller = new ChatController(this);
-        // SDKの初期化
-        if (checkPermissions(RECORD_AUDIO, READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE)) {
-            controller.initSdk();
-        }
-    }
+        app = (ChatApplication) getApplication();
+        app.init(this);
 
-    /**
-     * 必須権限チェック
-     *
-     * @param required 必須な権限名の配列
-     * @return 必須権限が許可されている場合にtrue
-     */
-    private boolean checkPermissions(String... required) {
-        List<String> requests = new ArrayList<>();
-        for (String permission : required) {
-            if (ContextCompat.checkSelfPermission(this, permission) != PERMISSION_GRANTED) {
-                requests.add(permission);
-            }
-        }
-        if (requests.isEmpty()) {
-            return true;
+        if (ContextCompat.checkSelfPermission(this, RECORD_AUDIO) == PERMISSION_GRANTED) {
+            setConnection();
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            requestPermissions(requests.toArray(new String[0]), REQUEST_CODE);
+            requestPermissions(new String[]{RECORD_AUDIO}, REQUEST_CODE);
         } else {
             alertPermissions();
         }
-        return false;
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == REQUEST_CODE) {
-            int granted = 0;
-            for (int result : grantResults) {
-                if (result == PERMISSION_GRANTED) {
-                    granted++;
-                }
-            }
-            if (permissions.length == granted) {
-                // SDKの初期化
-                controller.initSdk();
+            if (grantResults[0] == PERMISSION_GRANTED) {
+                setConnection();
             } else {
                 alertPermissions();
             }
@@ -119,31 +93,57 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
+     * 接続情報設定
+     */
+    private void setConnection() {
+        String accessToken = Config.getInstance().getAccessToken();
+        if (accessToken != null) {
+            app.setConnection(accessToken);
+        } else {
+            // ユーザダッシュボードのログイン画面を表示
+            FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
+            ft.replace(R.id.base_layout, new UserDashboard()).commitAllowingStateLoss();
+        }
+    }
+
+    /**
      * 必須権限が許可されていない場合の警告を表示
      */
     private void alertPermissions() {
-        DialogFragment dialog = KillProcessDialog.newInstance("以下の許可が必要です", "ストレージ、マイク");
+        DialogFragment dialog = Exit.newInstance(null, getString(R.string.require_record_audio));
         FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-        ft.add(dialog, "permission_denied");
+        ft.add(dialog, null);
         ft.commitAllowingStateLoss();
     }
 
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.main, menu);
-        controller.setMenu(menu);
-        return super.onCreateOptionsMenu(menu);
+    /**
+     * Webブラウザの表示
+     *
+     * @param url 表示するURL
+     */
+    public void startBrowser(String url) {
+        Intent browser = new Intent(Intent.ACTION_VIEW);
+        browser.setData(Uri.parse(url));
+        startActivity(browser);
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
+    public boolean onMenuItemClick(MenuItem item) {
+        ChatController chat = ChatController.getInstance();
         switch (item.getItemId()) {
-            case R.id.voice_mode:
-                controller.toggleVoice();
+            case R.id.mic:
+                if (chat.isVoiceMode()) {
+                    chat.stopVoice();
+                } else {
+                    chat.startVoice();
+                }
                 break;
-            case R.id.text_mode:
-                controller.toggleText();
+            case R.id.keyboard:
+                if (chat.isTextMode()) {
+                    chat.stopText();
+                } else {
+                    chat.startText();
+                }
                 break;
             case R.id.link_uds:
                 startBrowser(URLConstants.USER_DASHBOARD);
@@ -155,43 +155,34 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(new Intent(this, AppInfoActivity.class));
                 break;
             case R.id.config:
-                new ConfigDialog().show(getSupportFragmentManager(), "config");
+                new EditConfig().show(getSupportFragmentManager(), null);
                 break;
             case R.id.initAuth:
-                new InitAuthDialog().show(getSupportFragmentManager(), "init_auth");
+                new ResetAccessToken().show(getSupportFragmentManager(), null);
                 break;
             default:
-                return super.onOptionsItemSelected(item);
+                return false;
         }
         return true;
     }
 
-    /**
-     * Webブラウザの表示
-     *
-     * @param url 表示するURL
-     */
-    private void startBrowser(String url) {
-        Intent browser = new Intent(Intent.ACTION_VIEW);
-        browser.setData(Uri.parse(url));
-        startActivity(browser);
-    }
-
     @Override
     protected void onPause() {
-        controller.stop();
+        app.onPause();
         super.onPause();
     }
 
     @Override
     protected void onDestroy() {
-        controller = null;
+        app.onDestroy();
+        app = null;
         super.onDestroy();
+        Process.killProcess(Process.myPid());
     }
 
     @Override
     public void onBackPressed() {
-        controller.quit();
+        finishAndRemoveTask();
     }
 
 }

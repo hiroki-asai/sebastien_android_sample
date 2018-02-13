@@ -1,0 +1,25 @@
+{
+  "type": "nlu_result",
+  "systemText": {
+    "utterance": "解析失敗",
+    "expression": "解析失敗"
+  },
+  "option": {
+    "switchAgent": {
+      "agentId": "spftalk",
+      "agentType": "1",
+      "afterUtt": "true"
+    },
+    "postback": {
+      "payload": "#DDB"
+    },
+    "balloon": [
+      {
+        "type": "text",
+        "payload": {
+          "expression": ""
+        }
+      }
+    ]
+  }
+}

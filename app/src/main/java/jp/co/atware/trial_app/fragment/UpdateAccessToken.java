@@ -39,19 +39,18 @@ import android.support.v7.app.AlertDialog.Builder;
 import jp.co.atware.trial_app.R;
 
 /**
- * アクセストークンを更新
+ * 認証情報更新ダイアログ
  */
 public class UpdateAccessToken extends DialogFragment {
-
 
     @NonNull
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         setCancelable(false);
-        return new Builder(getActivity()).setTitle("認証情報の有効期限切れ")
-                .setMessage("有効期限を更新しますか")
-                .setNegativeButton("キャンセル", null)
-                .setPositiveButton("更新する", new OnClickListener() {
+        return new Builder(getActivity()).setTitle(R.string.update_token_title)
+                .setMessage(R.string.update_token_message)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.update_token, new OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         FragmentTransaction ft = getFragmentManager().beginTransaction();
@@ -60,8 +59,4 @@ public class UpdateAccessToken extends DialogFragment {
                 }).create();
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-    }
 }

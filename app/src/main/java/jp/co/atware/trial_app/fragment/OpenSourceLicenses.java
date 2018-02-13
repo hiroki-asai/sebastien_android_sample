@@ -39,7 +39,7 @@ import jp.co.atware.trial_app.R;
 
 
 /**
- * オープンソースライセンスを表示
+ * オープンソースライセンス画面
  */
 public class OpenSourceLicenses extends Fragment {
 

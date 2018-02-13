@@ -41,20 +41,20 @@ import android.widget.TextView;
 import jp.co.atware.trial_app.fragment.OpenSourceLicenses;
 
 /**
- * アプリケーション情報
+ * アプリケーション情報画面
  */
 public class AppInfoActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.app_info);
+        setContentView(R.layout.activity_app_info);
         try {
             PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
             TextView version = (TextView) findViewById(R.id.version);
             version.setText(info.versionName);
         } catch (PackageManager.NameNotFoundException e) {
-            Log.d("AppInfoActivity", e.toString());
+            Log.e("AppInfoActivity", "unexpected error occurred.", e);
         }
 
         Button button = (Button) findViewById(R.id.show_licences);

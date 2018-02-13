@@ -1,0 +1,57 @@
+{
+  "type": "nlu_result",
+  "systemText": {
+    "utterance": "解析失敗",
+    "expression": "解析失敗"
+  },
+  "option": {
+    "balloon": [
+      {
+        "type": "template",
+        "payload": {
+          "type": "compound",
+          "trays": [
+            {
+              "title": "タイトル1",
+              "imageUrl": "画像1",
+              "text": "テキスト1",
+              "buttons": [
+                {
+                  "type": "webUrl",
+                  "title": "リンク1を開く",
+                  "url": "リンク1"
+                },
+                {
+                  "type": "postback",
+                  "title": "キャンセル1",
+                  "payload": {
+                    "text": "#CANCEL_1"
+                  }
+                }
+              ]
+            },
+            {
+              "title": "タイトル2",
+              "imageUrl": "画像2",
+              "text": "テキスト2",
+              "buttons": [
+                {
+                  "type": "webUrl",
+                  "title": "リンク2を開く",
+                  "url": "リンク2"
+                },
+                {
+                  "type": "postback",
+                  "title": "キャンセル2",
+                  "payload": {
+                    "text": "#CANCEL_2"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

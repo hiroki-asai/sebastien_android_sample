@@ -1,0 +1,32 @@
+{
+  "type": "nlu_result",
+  "systemText": {
+    "utterance": "解析失敗",
+    "expression": "解析失敗"
+  },
+  "option": {
+    "balloon": [
+      {
+        "type": "template",
+        "payload": {
+          "type": "button",
+          "text": "解析成功",
+          "buttons": [
+            {
+              "type": "webUrl",
+              "title": "リンクを開く",
+              "url": "リンク"
+            },
+            {
+              "type": "postback",
+              "title": "キャンセル",
+              "payload": {
+                "text": "#CANCEL"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

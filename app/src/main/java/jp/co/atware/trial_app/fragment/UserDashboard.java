@@ -37,8 +37,8 @@ import android.webkit.WebView;
 
 import java.util.List;
 
-import jp.co.atware.trial_app.MainActivity;
 import jp.co.atware.trial_app.R;
+import jp.co.atware.trial_app.chat.ChatApplication;
 import jp.co.atware.trial_app.util.ApiClient;
 import jp.co.atware.trial_app.util.ApiClient.ApiCallBack;
 import jp.co.atware.trial_app.util.Config;
@@ -50,11 +50,11 @@ import static jp.co.atware.trial_app.util.URLConstants.USER_DASHBOARD;
 
 
 /**
- * ユーザダッシュボード画面を表示
- * ログインが成功するとアクセストークンを取得する
+ * ユーザダッシュボード画面
  */
 public class UserDashboard extends Fragment implements LoginCallBack, ApiCallBack {
 
+    private static final String USER_AGENT = "Mozilla/5.0 Google";
 
     private boolean update = false;
     private Progress progress;
@@ -62,7 +62,7 @@ public class UserDashboard extends Fragment implements LoginCallBack, ApiCallBac
     /**
      * アクセストークン更新用のインスタンスを取得
      *
-     * @return 更新用のUserDashboardインスタンス
+     * @return UserDashboardインスタンス
      */
     public static UserDashboard forUpdate() {
         UserDashboard uds = new UserDashboard();
@@ -74,7 +74,7 @@ public class UserDashboard extends Fragment implements LoginCallBack, ApiCallBac
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, Bundle savedInstanceState) {
         super.onCreateView(inflater, container, savedInstanceState);
-        return inflater.inflate(R.layout.login_uds, container, false);
+        return inflater.inflate(R.layout.user_dashboard, container, false);
     }
 
     @Override
@@ -83,15 +83,15 @@ public class UserDashboard extends Fragment implements LoginCallBack, ApiCallBac
         WebView uds = (WebView) view.findViewById(R.id.uds);
         uds.setWebViewClient(new LoginClient(this));
         uds.getSettings().setJavaScriptEnabled(true);
-        uds.getSettings().setUserAgentString("Mozilla/5.0 Google");
+        uds.getSettings().setUserAgentString(USER_AGENT);
         uds.loadUrl(USER_DASHBOARD);
     }
 
     @Override
     public void onLoginSuccess(List<Cookie> cookies) {
-        progress = Progress.newInstance("認証情報取得中", false);
+        progress = Progress.newInstance(getString(R.string.request_token_start), false);
         progress.setTargetFragment(this, 0);
-        progress.show(getFragmentManager(), "progress");
+        progress.show(getFragmentManager(), null);
         ApiClient api = new ApiClient(cookies, this);
         if (update) {
             api.update();
@@ -101,15 +101,15 @@ public class UserDashboard extends Fragment implements LoginCallBack, ApiCallBac
     }
 
     @Override
-    public void onRequestSuccess() {
+    public void onRequestSuccess(String accessToken) {
         if (progress != null) {
             progress.dismiss();
         }
         if (update) {
-            SimpleAlertDialog.newInstance("有効期限を更新しました", null)
-                    .show(getFragmentManager(), "request_success");
+            Alert.newInstance(null, getString(R.string.update_token_success))
+                    .show(getFragmentManager(), null);
         }
-        ((MainActivity) getActivity()).controller.initSdk();
+        ChatApplication.getInstance().setConnection(accessToken);
         getFragmentManager().beginTransaction().remove(this).commit();
     }
 
@@ -121,9 +121,9 @@ public class UserDashboard extends Fragment implements LoginCallBack, ApiCallBac
         if (update) {
             Config.getInstance().removeAccessToken();
         }
-        KillProcessDialog dialog = KillProcessDialog.newInstance("認証情報取得失敗", message);
+        Exit dialog = Exit.newInstance(getString(R.string.request_token_failed), message);
         dialog.setTargetFragment(this, 1);
-        dialog.show(getFragmentManager(), "request_failed");
+        dialog.show(getFragmentManager(), null);
     }
 
     @Override

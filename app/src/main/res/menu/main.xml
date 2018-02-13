@@ -29,13 +29,13 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
-        android:id="@+id/voice_mode"
+        android:id="@+id/mic"
         android:icon="@drawable/ic_mic_off_white_24px"
         android:title="音声対話"
         android:orderInCategory="11"
         app:showAsAction="always" />
     <item
-        android:id="@+id/text_mode"
+        android:id="@+id/keyboard"
         android:icon="@drawable/ic_keyboard_white_24px"
         android:title="テキストチャット"
         android:orderInCategory="12"
