@@ -33,31 +33,33 @@ import android.os.AsyncTask;
 import android.util.Log;
 import android.widget.ImageView;
 
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
+import jp.co.atware.trial_app.R;
 import jp.co.atware.trial_app.chat.ChatApplication;
 
 /**
  * ImageViewにネット画像を設定
  */
-public class ImageAdapter extends AsyncTask<Void, Void, Bitmap> {
+public class ImageAdapter extends AsyncTask<String, Void, RecycleBitmapDrawable> {
+
+    private static volatile Integer BALLOON_WIDTH;
 
     private final ImageView imageView;
-    private final String imageUrl;
     private boolean scroll;
 
     /**
      * コンストラクタ
      *
      * @param imageView ImageView
-     * @param imageUrl  画像URL
      */
-    public ImageAdapter(ImageView imageView, String imageUrl) {
-        imageView.setTag(imageUrl);
+    public ImageAdapter(ImageView imageView) {
         this.imageView = imageView;
-        this.imageUrl = imageUrl;
+        imageView.setTag(this);
     }
 
     /**
@@ -70,7 +72,66 @@ public class ImageAdapter extends AsyncTask<Void, Void, Bitmap> {
     }
 
     @Override
-    protected Bitmap doInBackground(Void... params) {
+    protected RecycleBitmapDrawable doInBackground(String... params) {
+        String imageUrl = params[0];
+        ImageCache cache = ImageCache.getInstance();
+        // 画像をディスクキャッシュから取得
+        RecycleBitmapDrawable drawable = cache.load(imageUrl);
+        if (drawable != null) {
+            // ディスクキャッシュから取得した画像をメモリキャッシュに格納
+            cache.put(imageUrl, drawable);
+        } else {
+            try {
+                byte[] data = getData(imageUrl);
+                BitmapFactory.Options opts = new BitmapFactory.Options();
+                opts.inJustDecodeBounds = true;
+                BitmapFactory.decodeByteArray(data, 0, data.length, opts);
+                // 画像のリサイズ
+                int scale = (int) Math.floor((float) opts.outWidth / getBalloonWidth());
+                if (2 < scale) {
+                    for (int i = 2; i <= scale; i *= 2) {
+                        opts.inSampleSize = i;
+                    }
+                }
+                opts.inJustDecodeBounds = false;
+                opts.inPreferredConfig = Bitmap.Config.RGB_565;
+                Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length, opts);
+                drawable = new RecycleBitmapDrawable(ChatApplication.getInstance().getResources(), bitmap);
+                // リサイズした画像をキャッシュに格納
+                cache.put(imageUrl, drawable);
+                cache.save(imageUrl, drawable);
+            } catch (InterruptedIOException ignore) {
+            } catch (Exception e) {
+                Log.w("ImageAdapter", "unexpected error occurred.", e);
+            }
+        }
+        return drawable;
+    }
+
+    /**
+     * 吹き出しの横幅を取得
+     *
+     * @return 横幅のPixel数
+     */
+    private int getBalloonWidth() {
+        if (BALLOON_WIDTH == null) {
+            synchronized (ImageAdapter.class) {
+                if (BALLOON_WIDTH == null) {
+                    BALLOON_WIDTH = imageView.getContext().getResources().getDimensionPixelSize(R.dimen.balloon_width);
+                }
+            }
+        }
+        return BALLOON_WIDTH;
+    }
+
+    /**
+     * HTTPで画像データを取得
+     *
+     * @param imageUrl 画像URL
+     * @return 画像データ
+     * @throws Exception 画像データ取得失敗
+     */
+    private byte[] getData(String imageUrl) throws Exception {
         HttpURLConnection http = null;
         try {
             URL url = new URL(imageUrl);
@@ -78,24 +139,25 @@ public class ImageAdapter extends AsyncTask<Void, Void, Bitmap> {
             http.setRequestMethod("GET");
             http.connect();
 
-            try (InputStream input = http.getInputStream()) {
-                return BitmapFactory.decodeStream(input);
+            try (InputStream input = http.getInputStream();
+                 ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+                int b = 0;
+                while ((b = input.read()) != -1) {
+                    output.write(b);
+                }
+                return output.toByteArray();
             }
-
-        } catch (Exception e) {
-            Log.e("ImageAdapter", "unexpected error occurred.", e);
         } finally {
             if (http != null) {
                 http.disconnect();
             }
         }
-        return null;
     }
 
     @Override
-    protected void onPostExecute(Bitmap bitmap) {
-        if (bitmap != null && imageView.getTag().equals(imageUrl)) {
-            imageView.setImageBitmap(bitmap);
+    protected void onPostExecute(RecycleBitmapDrawable drawable) {
+        if (drawable != null) {
+            imageView.setImageDrawable(drawable);
             if (scroll) {
                 ChatApplication.getInstance().scrollDown();
             }

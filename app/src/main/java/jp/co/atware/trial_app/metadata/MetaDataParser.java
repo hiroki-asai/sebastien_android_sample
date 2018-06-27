@@ -39,6 +39,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import jp.co.atware.trial_app.balloon.Balloon;
 import jp.co.atware.trial_app.balloon.Balloon.Action;
@@ -84,6 +85,7 @@ public class MetaDataParser {
     static final String AUDIO = "audio";
     static final String UTTERANCE = "utterance";
     static final String TEXT_HTML = "text/html";
+    static final Pattern IGNORE_EXPRESSION = Pattern.compile("undefined|NOMATCH");
 
     /**
      * メタデータ解析
@@ -140,6 +142,8 @@ public class MetaDataParser {
         // switchAgentとpostbackを取得
         result.switchAgent = getSwitchAgent(optionMap);
         result.postback = getPostback(optionMap);
+        // システム発話
+        String expression = findString(findMap(metaMap, SYSTEM_TEXT), EXPRESSION);
         //　吹き出しを取得
         List<Map> balloonList = findMapList(optionMap, BALLOON);
         if (balloonList != null) {
@@ -155,17 +159,16 @@ public class MetaDataParser {
                     if (!result.utterance) {
                         // 発話が無ければ即再生
                         balloon.action = Action.PLAY;
-                    } else if(result.postback == null){
+                    } else if (result.postback == null) {
                         // 発話後に再生
                         balloon.action = Action.PLAY_AFTER_UTT;
                     }
                     break;
                 }
             }
-        } else {
-            // 吹き出しが無い場合はexpressionを吹き出しとする
-            result.balloons.add((new Balloon(BalloonType.AI_VOICE,
-                    findString(findMap(metaMap, SYSTEM_TEXT), EXPRESSION))));
+        } else if (!isEmpty(expression) && !IGNORE_EXPRESSION.matcher(expression).matches()) {
+            // 吹き出しが無い場合はシステム発話を吹き出しとする
+            result.balloons.add((new Balloon(BalloonType.AI_VOICE, expression)));
         }
         return result;
     }
@@ -221,7 +224,7 @@ public class MetaDataParser {
             return new Balloon(BalloonType.IMAGE, url);
         } else if (contentType.startsWith(AUDIO)) {
             return new Balloon(BalloonType.AUDIO, url);
-        } else if (contentType.equals(TEXT_HTML)){
+        } else if (contentType.equals(TEXT_HTML)) {
             return new Balloon(BalloonType.HTML, url);
         }
         return new Balloon(BalloonType.AI_VOICE, contentType + "\n" + url);

@@ -72,6 +72,30 @@ public class MetaDataParserTest {
         assertEquals(expected, new MetaDataParser().parse(sb.toString()));
     }
 
+
+    /**
+     * 空のnlu_resultを解析
+     *
+     * @throws Exception テスト失敗
+     */
+    @Test
+    public void test_empty() throws Exception {
+        MetaData meta = new MetaData(MetaDataType.NLU_RESULT);
+        execute("empty.json", meta);
+    }
+
+    /**
+     * システム発話文字列がNOMATCH
+     *
+     * @throws Exception テスト失敗
+     */
+    @Test
+    public void test_nomatch() throws Exception {
+        MetaData meta = new MetaData(MetaDataType.NLU_RESULT);
+        execute("nomatch.json", meta);
+    }
+
+
     /**
      * balloonが空のnlu_resultを解析
      *

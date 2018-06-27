@@ -39,16 +39,20 @@ import jp.co.atware.trial_app.chat.ChatController.ChatStatus;
  */
 class ChatStartHandler extends EventHandler {
 
+    private static final String INIT = "#INIT";
+
     final ChatMode mode;
     final Object data;
+    final boolean init;
 
     /**
      * 音声対話用のインスタンスを生成
      *
+     * @param init 開始直後に会話状態を初期化する場合にtrue
      * @return ChatStartHandlerインスタンス
      */
-    static ChatStartHandler forVoiceMode() {
-        return new ChatStartHandler(ChatMode.VOICE, null);
+    static ChatStartHandler forVoiceMode(boolean init) {
+        return new ChatStartHandler(ChatMode.VOICE, null, init);
     }
 
     /**
@@ -58,7 +62,7 @@ class ChatStartHandler extends EventHandler {
      * @return ChatStartHandlerインスタンス
      */
     static ChatStartHandler forTextMode(Object data) {
-        return new ChatStartHandler(ChatMode.TEXT, data);
+        return new ChatStartHandler(ChatMode.TEXT, data, false);
     }
 
     /**
@@ -67,15 +71,19 @@ class ChatStartHandler extends EventHandler {
      * @param mode 対話モード
      * @param data 送信データ
      */
-    private ChatStartHandler(ChatMode mode, Object data) {
+    private ChatStartHandler(ChatMode mode, Object data, boolean init) {
         this.mode = mode;
         this.data = data;
+        this.init = init;
     }
 
     @Override
     public void run() {
         ChatController chat = ChatController.getInstance();
         chat.setStatus(ChatStatus.START);
+        if (init) {
+            ChatApplication.getInstance().putMeta(INIT, null);
+        }
         if (mode == ChatMode.VOICE) {
             chat.setAutoStop();
             if (AudioAdapter.getInstance().isPlaying()) {

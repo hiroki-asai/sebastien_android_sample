@@ -54,9 +54,6 @@ public class ResetAccessToken extends DialogFragment {
                 .setPositiveButton(R.string.remove_token, new OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
-                        CookieManager cm = CookieManager.getInstance();
-                        cm.removeAllCookies(null);
-                        cm.flush();
                         Config.getInstance().removeAccessToken();
                         ChatApplication.getInstance().onPause();
                         FragmentTransaction ft = getFragmentManager().beginTransaction();

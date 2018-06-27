@@ -59,9 +59,6 @@ public class EditConfig extends DialogFragment {
         // SSLを使用
         final CheckBox ssl = (CheckBox) configView.findViewById(R.id.ssl);
         ssl.setChecked(config.isSSL());
-        // OCSPを使用
-        final CheckBox ocsp = (CheckBox) configView.findViewById(R.id.ocsp);
-        ocsp.setChecked(config.isOCSP());
         // ホスト名
         final EditText host = (EditText) configView.findViewById(R.id.edit_host);
         host.setText(config.getHost());
@@ -77,11 +74,10 @@ public class EditConfig extends DialogFragment {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
                         boolean sslChanged = config.setSSL(ssl.isChecked());
-                        boolean ocspChanged = config.setOCSP(ocsp.isChecked());
                         boolean hostChanged = config.setHost(host.getText().toString());
                         boolean portChanged = config.setPort(port.getText().toString());
                         boolean pathChanged = config.setPath(path.getText().toString());
-                        if (sslChanged || ocspChanged || hostChanged || portChanged || pathChanged) {
+                        if (sslChanged || hostChanged || portChanged || pathChanged) {
                             ChatApplication app = ChatApplication.getInstance();
                             app.onPause();
                             app.setConnection(config.getAccessToken());
@@ -99,7 +95,6 @@ public class EditConfig extends DialogFragment {
                     @Override
                     public void onClick(View v) {
                         ssl.setChecked(Boolean.valueOf(Keys.SSL.defaultValue));
-                        ocsp.setChecked(Boolean.valueOf(Keys.OCSP.defaultValue));
                         host.setText(Keys.HOST.defaultValue);
                         port.setText(Keys.PORT.defaultValue);
                         path.setText(Keys.PATH.defaultValue);

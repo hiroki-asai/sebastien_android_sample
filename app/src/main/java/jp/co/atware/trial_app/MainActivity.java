@@ -40,6 +40,11 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar.OnMenuItemClickListener;
 import android.view.MenuItem;
 
+import com.nttdocomo.sebastien.Sebastien.OnConnectedWithHFP;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import jp.co.atware.trial_app.chat.ChatApplication;
 import jp.co.atware.trial_app.chat.ChatController;
 import jp.co.atware.trial_app.fragment.EditConfig;
@@ -49,6 +54,7 @@ import jp.co.atware.trial_app.fragment.UserDashboard;
 import jp.co.atware.trial_app.util.Config;
 import jp.co.atware.trial_app.util.URLConstants;
 
+import static android.Manifest.permission.READ_PHONE_STATE;
 import static android.Manifest.permission.RECORD_AUDIO;
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 import static android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN;
@@ -59,8 +65,25 @@ import static android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HI
 public class MainActivity extends AppCompatActivity implements OnMenuItemClickListener {
 
     private static final int REQUEST_CODE = 1000;
+    private static final String[] REQUIRED_PERMISSIONS = {RECORD_AUDIO, READ_PHONE_STATE};
 
     private ChatApplication app;
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (isStartVoiceCommand()) {
+            final ChatController chat = ChatController.getInstance();
+            chat.setMenuEnabled(false);
+            app.setOnConnectedWithHFP(new OnConnectedWithHFP() {
+                @Override
+                public void onConnected() {
+                    app.setOnConnectedWithHFP(null);
+                    chat.startVoice(false);
+                }
+            });
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,11 +92,19 @@ public class MainActivity extends AppCompatActivity implements OnMenuItemClickLi
         setContentView(R.layout.activity_main);
         app = (ChatApplication) getApplication();
         app.init(this);
+    }
 
-        if (ContextCompat.checkSelfPermission(this, RECORD_AUDIO) == PERMISSION_GRANTED) {
+    public void init() {
+        List<String> requests = new ArrayList<>();
+        for (String permission : REQUIRED_PERMISSIONS) {
+            if (ContextCompat.checkSelfPermission(this, permission) != PERMISSION_GRANTED) {
+                requests.add(permission);
+            }
+        }
+        if (requests.isEmpty()) {
             setConnection();
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            requestPermissions(new String[]{RECORD_AUDIO}, REQUEST_CODE);
+            requestPermissions(requests.toArray(new String[0]), REQUEST_CODE);
         } else {
             alertPermissions();
         }
@@ -82,7 +113,13 @@ public class MainActivity extends AppCompatActivity implements OnMenuItemClickLi
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == REQUEST_CODE) {
-            if (grantResults[0] == PERMISSION_GRANTED) {
+            int granted = 0;
+            for (int result : grantResults) {
+                if (result == PERMISSION_GRANTED) {
+                    granted++;
+                }
+            }
+            if (permissions.length == granted) {
                 setConnection();
             } else {
                 alertPermissions();
@@ -99,6 +136,9 @@ public class MainActivity extends AppCompatActivity implements OnMenuItemClickLi
         String accessToken = Config.getInstance().getAccessToken();
         if (accessToken != null) {
             app.setConnection(accessToken);
+            if (isStartVoiceCommand()) {
+                ChatController.getInstance().startVoice(true);
+            }
         } else {
             // ユーザダッシュボードのログイン画面を表示
             FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
@@ -107,10 +147,19 @@ public class MainActivity extends AppCompatActivity implements OnMenuItemClickLi
     }
 
     /**
+     * Voice Command起動判定
+     *
+     * @return Voice Commandで起動した場合にtrue
+     */
+    public boolean isStartVoiceCommand() {
+        return getIntent().getAction().equals(Intent.ACTION_VOICE_COMMAND);
+    }
+
+    /**
      * 必須権限が許可されていない場合の警告を表示
      */
     private void alertPermissions() {
-        DialogFragment dialog = Exit.newInstance(null, getString(R.string.require_record_audio));
+        DialogFragment dialog = Exit.newInstance(null, getString(R.string.permission_required));
         FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
         ft.add(dialog, null);
         ft.commitAllowingStateLoss();
@@ -135,7 +184,7 @@ public class MainActivity extends AppCompatActivity implements OnMenuItemClickLi
                 if (chat.isVoiceMode()) {
                     chat.stopVoice();
                 } else {
-                    chat.startVoice();
+                    chat.startVoice(false);
                 }
                 break;
             case R.id.keyboard:

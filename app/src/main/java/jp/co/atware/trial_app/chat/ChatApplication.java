@@ -28,20 +28,23 @@
 package jp.co.atware.trial_app.chat;
 
 import android.app.Application;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothProfile;
 import android.graphics.Color;
-import android.net.http.HttpResponseCache;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
+import android.view.ViewConfiguration;
 import android.webkit.WebView;
 import android.widget.ListView;
 
 import com.nttdocomo.flow.EventHandler;
 import com.nttdocomo.flow.StringEventHandler;
 import com.nttdocomo.sebastien.Sebastien;
+import com.nttdocomo.sebastien.Sebastien.OnConnectedWithHFP;
 import com.nttdocomo.sebastien.util.NluMetaData;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -69,8 +72,7 @@ import jp.co.atware.trial_app.util.Config;
  */
 public class ChatApplication extends Application {
 
-    private static final long HTTP_CACHE_SIZE = 10 * 1024 * 1024;
-
+    private static final float SCROLL_WEIGHT = 2f;
     private static final DeviceInfo TTS_ON = new DeviceInfo(Build.MODEL, PlayTTS.ON);
     private static final DeviceInfo TTS_OFF = new DeviceInfo(Build.MODEL, PlayTTS.OFF);
 
@@ -93,6 +95,7 @@ public class ChatApplication extends Application {
     private final MetaDataParser parser = new MetaDataParser();
     private final AtomicReference<AgentType> switchAfterUtt = new AtomicReference<>();
     private final Queue<Balloon> playAfterUtt = new LinkedList<>();
+    private final Handler handler = new Handler(Looper.getMainLooper());
 
     private ListView chatView;
 
@@ -100,12 +103,6 @@ public class ChatApplication extends Application {
     public void onCreate() {
         super.onCreate();
         INSTANCE = this;
-        // HTTPキャッシュのインストール
-        try {
-            HttpResponseCache.install(new File(getCacheDir(), "http"), HTTP_CACHE_SIZE);
-        } catch (IOException e) {
-            Log.w("ChatApplication", "HttpResponseCache is not installed.");
-        }
     }
 
     /**
@@ -113,13 +110,47 @@ public class ChatApplication extends Application {
      *
      * @param activity 対話アプリのMainActivity
      */
-    public void init(MainActivity activity) {
+    public void init(final MainActivity activity) {
         // WebViewキャッシュの削除
         new WebView(activity).clearCache(true);
         chatView = (ListView) activity.findViewById(R.id.chat_area);
         chatView.setOnScrollListener(balloonAdapter);
         chatView.setAdapter(balloonAdapter);
+        chatView.setFriction(ViewConfiguration.getScrollFriction() * SCROLL_WEIGHT);
         chat.init(activity);
+        sdk.enableBluetoothSupport();
+        sdk.setContext(getApplicationContext());
+        if (isHeadSetConnected()) {
+            setOnConnectedWithHFP(new OnConnectedWithHFP() {
+                @Override
+                public void onConnected() {
+                    setOnConnectedWithHFP(null);
+                    activity.init();
+                }
+            });
+        } else {
+            activity.init();
+        }
+    }
+
+    /**
+     * ヘッドセット接続状態を取得
+     *
+     * @return ヘッドセットが接続されている場合にtrue
+     */
+    private boolean isHeadSetConnected() {
+        BluetoothAdapter bta = BluetoothAdapter.getDefaultAdapter();
+        return bta != null && bta.getProfileConnectionState(BluetoothProfile.HEADSET)
+                == BluetoothAdapter.STATE_CONNECTED;
+    }
+
+    /**
+     * HFP有効化完了時のコールバックを設定
+     *
+     * @param callback コールバック
+     */
+    public void setOnConnectedWithHFP(OnConnectedWithHFP callback) {
+        sdk.setOnConnectedWithHFP(callback);
     }
 
     /**
@@ -142,15 +173,6 @@ public class ChatApplication extends Application {
         audioAdapter.destroy();
         chat.destroy();
         chatView = null;
-        // HTTPキャッシュを削除
-        HttpResponseCache cache = HttpResponseCache.getInstalled();
-        if (cache != null) {
-            try {
-                cache.delete();
-            } catch (IOException e) {
-                Log.w("ChatApplication", "HttpResponseCache is not deleted.");
-            }
-        }
     }
 
     /**
@@ -161,21 +183,25 @@ public class ChatApplication extends Application {
     public void setConnection(String accessToken) {
         Config config = Config.getInstance();
         sdk.set("UseSSL", config.isSSL());
-        sdk.set("EnableOCSP", config.isOCSP());
+        sdk.set("EnableOCSP", true);
         sdk.set("OutputGain", 1.00);
         sdk.setHost(config.getHost());
         sdk.setPort(config.getPort());
         sdk.setURLPath(config.getPath());
         sdk.setAccessToken(accessToken);
-        sdk.setContext(getApplicationContext());
         // メタデータ受信時の処理
         sdk.setOnMetaOut(new StringEventHandler() {
             @Override
             public void run(String metaData) {
                 Log.d("OnMetaOut", metaData);
-                MetaData meta = parser.parse(metaData);
+                final MetaData meta = parser.parse(metaData);
                 if (meta != null) {
-                    onMetaOut(meta);
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            onMetaOut(meta);
+                        }
+                    });
                 }
             }
         });
@@ -183,27 +209,43 @@ public class ChatApplication extends Application {
         sdk.setOnPlayStart(new StringEventHandler() {
             @Override
             public void run(String s) {
-                audioAdapter.pause();
-                chat.setSubtitle(R.string.playing_voice);
+                if (chat.isVoiceMode()) {
+                    chat.clearAutoStop();
+                }
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        audioAdapter.pause();
+                        chat.setSubtitle(R.string.playing_voice);
+                    }
+                });
             }
         });
         // 合成音声再生終了時の処理
         sdk.setOnPlayEnd(new StringEventHandler() {
             @Override
             public void run(String s) {
-                // 合成音声再生後のエージェント切り替え
-                onSwitchAgent(switchAfterUtt.get());
-                // 合成音声再生後のメディア再生
-                synchronized (this) {
-                    Balloon balloon = playAfterUtt.poll();
-                    if (balloon != null && playAfterUtt.isEmpty()) {
-                        audioAdapter.playAfterUtt(balloon);
-                    } else if (!audioAdapter.isPlaying()) {
-                        chat.setSubtitle(R.string.ready_to_talk);
-                    }
+                if (chat.isVoiceMode()) {
+                    chat.setAutoStop();
                 }
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        // 合成音声再生後のエージェント切り替え
+                        onSwitchAgent(switchAfterUtt.get());
+                        // 合成音声再生後のメディア再生
+                        Balloon balloon = playAfterUtt.poll();
+                        if (balloon != null && playAfterUtt.isEmpty()) {
+                            audioAdapter.playAfterUtt(balloon);
+                        } else if (!audioAdapter.isPlaying()) {
+                            chat.setSubtitle(R.string.ready_to_talk);
+                        }
+                    }
+                });
+
             }
         });
+        chat.setMenuEnabled(true);
     }
 
     /**
@@ -211,7 +253,7 @@ public class ChatApplication extends Application {
      *
      * @param meta メタデータ
      */
-    private synchronized void onMetaOut(MetaData meta) {
+    private void onMetaOut(MetaData meta) {
         if (meta.utterance && meta.postback != null) {
             playAfterUtt.offer(null);
         }
@@ -226,16 +268,16 @@ public class ChatApplication extends Application {
         switch (meta.type) {
             case SPEECHREC_RESULT:
                 if (chat.isVoiceMode()) {
-                    chat.clearAutoStop();
                     chat.setWaiting();
                 }
                 break;
             case NLU_RESULT:
                 chat.clearWaiting();
-                if (chat.isVoiceMode()) {
-                    chat.setAutoStop();
-                } else {
+                if (chat.isTextMode()) {
                     stop();
+                } else if (!meta.utterance) {
+                    chat.clearAutoStop();
+                    chat.setAutoStop();
                 }
                 break;
         }
@@ -255,7 +297,7 @@ public class ChatApplication extends Application {
             show(balloon);
         }
         if (meta.postback != null) {
-            putPostback(meta.postback.payload, meta.postback.clientData);
+            putMeta(meta.postback.payload, meta.postback.clientData);
         }
     }
 
@@ -264,7 +306,7 @@ public class ChatApplication extends Application {
      *
      * @param balloon 吹き出し
      */
-    public synchronized void show(Balloon balloon) {
+    public void show(Balloon balloon) {
         balloonList.add(balloon);
         balloonAdapter.notifyDataSetChanged();
         scrollDown();
@@ -293,7 +335,7 @@ public class ChatApplication extends Application {
     /**
      * 合成音声再生後のメディア再生をクリア
      */
-    public synchronized void clearPlayAfterUtt() {
+    public void clearPlayAfterUtt() {
         playAfterUtt.clear();
     }
 
@@ -311,12 +353,12 @@ public class ChatApplication extends Application {
     }
 
     /**
-     * postbackを送信
+     * NLUメタデータを送信
      *
      * @param text       送信文字列
      * @param clientData クライアント情報
      */
-    public void putPostback(String text, Map clientData) {
+    public void putMeta(String text, Map clientData) {
         NluMetaData meta = new NluMetaData();
         meta.voiceText = text;
         meta.clientData = (clientData != null) ? clientData : new HashMap<>();
@@ -348,6 +390,15 @@ public class ChatApplication extends Application {
      */
     public void cancelPlay() {
         sdk.cancelPlay();
+    }
+
+    /**
+     * HFPモード判定
+     *
+     * @return HFPモードの場合にtrue
+     */
+    public boolean isEnabledHFP() {
+        return sdk.isEnabledHFP();
     }
 
     /**

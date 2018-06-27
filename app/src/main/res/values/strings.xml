@@ -29,7 +29,7 @@
     <string name="app_name">対話アプリ</string>
     <string name="app_info">アプリケーション情報</string>
     <string name="licences">オープンソースライセンス</string>
-    <string name="require_record_audio">音声の録音を許可して下さい。</string>
+    <string name="permission_required">権限を許可して下さい。</string>
     <string name="help">マイクアイコンをタップして音声対話を開始。キーボードアイコンをタップしてテキストチャットを開始。</string>
     <string name="stop">未接続</string>
     <string name="starting">接続中</string>

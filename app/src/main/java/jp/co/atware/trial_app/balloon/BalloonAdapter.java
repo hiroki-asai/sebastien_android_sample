@@ -27,8 +27,8 @@
 
 package jp.co.atware.trial_app.balloon;
 
-import android.content.Context;
 import android.graphics.Color;
+import android.os.AsyncTask;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.content.ContextCompat;
@@ -216,12 +216,24 @@ public class BalloonAdapter extends BaseAdapter implements OnScrollListener {
      * @param scroll    画像設定後にスクロールする場合にtrue
      */
     static void setImage(final ImageView imageView, String url, boolean scroll) {
-        if (url != null) {
-            ImageAdapter adapter = new ImageAdapter(imageView, url);
+        AsyncTask tag = (AsyncTask) imageView.getTag();
+        if (tag != null) {
+            tag.cancel(true);
+        }
+        if (url == null) {
+            return;
+        }
+        RecycleBitmapDrawable drawable = ImageCache.getInstance().get(url);
+        if (drawable != null) {
+            imageView.setImageDrawable(drawable);
+        } else {
+            ImageAdapter adapter = new ImageAdapter(imageView);
             adapter.setScroll(scroll);
-            adapter.execute();
+            adapter.execute(url);
         }
     }
+
+    private static Integer BUTTON_HEIGHT = null;
 
     /**
      * ボタンをViewGroupに追加
@@ -255,28 +267,21 @@ public class BalloonAdapter extends BaseAdapter implements OnScrollListener {
                         if (type == ButtonType.WEB_URL) {
                             activity.startBrowser(value);
                         } else {
-                            app.putPostback(value, null);
+                            app.cancelPlay();
+                            app.putMeta(value, null);
                         }
                     }
                 });
                 button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+                if (BUTTON_HEIGHT == null) {
+                    float scale = activity.getResources().getDisplayMetrics().density;
+                    BUTTON_HEIGHT = (int) (36 * scale + 0.5f);
+                }
                 LinearLayout.LayoutParams params =
-                        new LinearLayout.LayoutParams(MATCH_PARENT, calcPx(activity, 36));
+                        new LinearLayout.LayoutParams(MATCH_PARENT, BUTTON_HEIGHT);
                 viewGroup.addView(button, params);
             }
         }
-    }
-
-    /**
-     * dp値からピクセル数を算出
-     *
-     * @param context Context
-     * @param dp      dp値
-     * @return ピクセル数
-     */
-    private static int calcPx(Context context, float dp) {
-        float scale = context.getResources().getDisplayMetrics().density;
-        return (int) (dp * scale + 0.5f);
     }
 
     @Override

@@ -61,7 +61,6 @@ public class Config {
      */
     public enum Keys {
         SSL("true"),
-        OCSP("true"),
         HOST("spf.sebastien.ai"),
         PORT("443"),
         PATH("/talk"),
@@ -102,25 +101,6 @@ public class Config {
      */
     public boolean setSSL(Boolean ssl) {
         return set(Keys.SSL, ssl.toString());
-    }
-
-    /**
-     * OCSP使用の可否を取得
-     *
-     * @return OCSPを使用する場合にtrue
-     */
-    public boolean isOCSP() {
-        return Boolean.valueOf(get(Keys.OCSP));
-    }
-
-    /**
-     * OCSP使用の可否を設定
-     *
-     * @param ocsp OCSPを使用する場合にtrue
-     * @return OCSP使用の可否が変更された場合にtrue
-     */
-    public boolean setOCSP(Boolean ocsp) {
-        return set(Keys.OCSP, ocsp.toString());
     }
 
     /**

@@ -64,7 +64,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <ImageView
+            <jp.co.atware.trial_app.balloon.RecycleImageView
                 android:id="@+id/compound_image"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

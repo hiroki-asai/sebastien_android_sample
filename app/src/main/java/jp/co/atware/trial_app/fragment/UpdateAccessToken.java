@@ -29,34 +29,62 @@ package jp.co.atware.trial_app.fragment;
 
 import android.app.Dialog;
 import android.content.DialogInterface;
-import android.content.DialogInterface.OnClickListener;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.DialogFragment;
-import android.support.v4.app.FragmentTransaction;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AlertDialog.Builder;
+import android.view.View;
+import android.widget.Button;
 
 import jp.co.atware.trial_app.R;
+import jp.co.atware.trial_app.chat.ChatApplication;
+import jp.co.atware.trial_app.util.ApiClient;
+import jp.co.atware.trial_app.util.ApiClient.ApiCallBack;
+import jp.co.atware.trial_app.util.Config;
 
 /**
  * 認証情報更新ダイアログ
  */
-public class UpdateAccessToken extends DialogFragment {
+public class UpdateAccessToken extends DialogFragment implements ApiCallBack {
 
     @NonNull
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         setCancelable(false);
-        return new Builder(getActivity()).setTitle(R.string.update_token_title)
+        final AlertDialog updateDialog = new Builder(getActivity()).setTitle(R.string.update_token_title)
                 .setMessage(R.string.update_token_message)
                 .setNegativeButton(R.string.cancel, null)
-                .setPositiveButton(R.string.update_token, new OnClickListener() {
+                .setPositiveButton(R.string.update_token, null).create();
+
+        updateDialog.setOnShowListener(new DialogInterface.OnShowListener() {
+            @Override
+            public void onShow(DialogInterface dialog) {
+                Button update = updateDialog.getButton(DialogInterface.BUTTON_POSITIVE);
+                update.setOnClickListener(new View.OnClickListener() {
                     @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        FragmentTransaction ft = getFragmentManager().beginTransaction();
-                        ft.replace(R.id.base_layout, UserDashboard.forUpdate()).commit();
+                    public void onClick(View v) {
+                        new ApiClient(UpdateAccessToken.this).update();
                     }
-                }).create();
+                });
+            }
+        });
+        return updateDialog;
     }
 
+    @Override
+    public void onRequestSuccess(String accessToken) {
+        ChatApplication.getInstance().setConnection(accessToken);
+        Alert.newInstance(null, getString(R.string.update_token_success))
+                .show(getFragmentManager(), null);
+        dismiss();
+    }
+
+    @Override
+    public void onRequestFailed(String message) {
+        Config.getInstance().removeAccessToken();
+        Exit.newInstance(getString(R.string.request_token_failed), message)
+                .show(getFragmentManager(), null);
+        dismiss();
+    }
 }

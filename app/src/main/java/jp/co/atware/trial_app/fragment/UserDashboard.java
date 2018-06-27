@@ -33,6 +33,7 @@ import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.CookieManager;
 import android.webkit.WebView;
 
 import java.util.List;
@@ -56,19 +57,8 @@ public class UserDashboard extends Fragment implements LoginCallBack, ApiCallBac
 
     private static final String USER_AGENT = "Mozilla/5.0 Google";
 
-    private boolean update = false;
     private Progress progress;
 
-    /**
-     * アクセストークン更新用のインスタンスを取得
-     *
-     * @return UserDashboardインスタンス
-     */
-    public static UserDashboard forUpdate() {
-        UserDashboard uds = new UserDashboard();
-        uds.update = true;
-        return uds;
-    }
 
     @Nullable
     @Override
@@ -80,6 +70,11 @@ public class UserDashboard extends Fragment implements LoginCallBack, ApiCallBac
     @Override
     public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        // Cookieを削除
+        CookieManager cm = CookieManager.getInstance();
+        cm.removeAllCookies(null);
+        cm.flush();
+        // ログイン画面を表示
         WebView uds = (WebView) view.findViewById(R.id.uds);
         uds.setWebViewClient(new LoginClient(this));
         uds.getSettings().setJavaScriptEnabled(true);
@@ -92,22 +87,13 @@ public class UserDashboard extends Fragment implements LoginCallBack, ApiCallBac
         progress = Progress.newInstance(getString(R.string.request_token_start), false);
         progress.setTargetFragment(this, 0);
         progress.show(getFragmentManager(), null);
-        ApiClient api = new ApiClient(cookies, this);
-        if (update) {
-            api.update();
-        } else {
-            api.create();
-        }
+        new ApiClient(this).request(cookies);
     }
 
     @Override
     public void onRequestSuccess(String accessToken) {
         if (progress != null) {
             progress.dismiss();
-        }
-        if (update) {
-            Alert.newInstance(null, getString(R.string.update_token_success))
-                    .show(getFragmentManager(), null);
         }
         ChatApplication.getInstance().setConnection(accessToken);
         getFragmentManager().beginTransaction().remove(this).commit();
@@ -117,9 +103,6 @@ public class UserDashboard extends Fragment implements LoginCallBack, ApiCallBac
     public void onRequestFailed(String message) {
         if (progress != null) {
             progress.dismiss();
-        }
-        if (update) {
-            Config.getInstance().removeAccessToken();
         }
         Exit dialog = Exit.newInstance(getString(R.string.request_token_failed), message);
         dialog.setTargetFragment(this, 1);

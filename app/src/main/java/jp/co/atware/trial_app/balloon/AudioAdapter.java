@@ -214,7 +214,11 @@ public class AudioAdapter implements OnCompletionListener, OnPreparedListener {
                 player.stop();
             }
             player.reset();
-            player.setAudioStreamType(AudioManager.STREAM_MUSIC);
+            if (ChatApplication.getInstance().isEnabledHFP()) {
+                player.setAudioStreamType(AudioManager.STREAM_VOICE_CALL);
+            } else {
+                player.setAudioStreamType(AudioManager.STREAM_MUSIC);
+            }
             player.setDataSource(url);
             player.prepareAsync();
         } catch (Exception e) {

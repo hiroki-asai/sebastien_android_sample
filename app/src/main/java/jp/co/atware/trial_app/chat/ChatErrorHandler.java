@@ -40,6 +40,8 @@ import jp.co.atware.trial_app.fragment.UpdateAccessToken;
  */
 class ChatErrorHandler extends ErrorEventHandler {
 
+    private static final int WEB_SOCKET_ERR_FROM = 1000;
+    private static final int WEB_SOCKET_ERR_TO = 5000;
     private static final int TOKEN_EXPIRED = 40102;
 
     private final ChatMode mode;
@@ -56,8 +58,8 @@ class ChatErrorHandler extends ErrorEventHandler {
     @Override
     public void run(int errCode, String message) {
         ChatController chat = ChatController.getInstance();
-        // 音声対話中に接続エラーが発生した場合は自動接続を行う
-        if (mode == ChatMode.VOICE && errCode != TOKEN_EXPIRED && chat.setAutoStart()) {
+        // 音声対話中にWebSocketエラーが発生した場合は自動接続を行う
+        if (mode == ChatMode.VOICE && isWebSocketErr(errCode) && chat.setAutoStart()) {
             return;
         }
         chat.setStatus(ChatStatus.STOP);
@@ -73,5 +75,15 @@ class ChatErrorHandler extends ErrorEventHandler {
             chat.show(Alert.newInstance(ChatApplication.getInstance().getApplicationContext()
                     .getString(R.string.failed), message));
         }
+    }
+
+    /**
+     * WebSocketエラー判定
+     *
+     * @param errCode エラーコード
+     * @return WebSocket系のエラーコードの場合にtrue
+     */
+    private boolean isWebSocketErr(int errCode) {
+        return WEB_SOCKET_ERR_FROM <= errCode && errCode <= WEB_SOCKET_ERR_TO;
     }
 }

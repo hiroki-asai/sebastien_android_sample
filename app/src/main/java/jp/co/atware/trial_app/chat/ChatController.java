@@ -104,7 +104,13 @@ public class ChatController implements View.OnClickListener {
     private final Runnable autoStop = new Runnable() {
         @Override
         public void run() {
-            if (status.get() == ChatStatus.START) {
+            if (status.get() != ChatStatus.START) {
+                return;
+            }
+            MainActivity activity = getActivity();
+            if (activity.isStartVoiceCommand() && !AudioAdapter.getInstance().isPlaying()) {
+                activity.moveTaskToBack(true);
+            } else {
                 stopVoice();
                 String message = getActivity().getString(R.string.timeout);
                 show(Alert.newInstance(null, message));
@@ -119,7 +125,7 @@ public class ChatController implements View.OnClickListener {
         @Override
         public void run() {
             if (status.get() == ChatStatus.STOP) {
-                ChatApplication.getInstance().start(ChatStartHandler.forVoiceMode());
+                ChatApplication.getInstance().start(ChatStartHandler.forVoiceMode(false));
             }
         }
     };
@@ -190,6 +196,7 @@ public class ChatController implements View.OnClickListener {
         inputArea = (LinearLayout) activity.findViewById(R.id.input_area);
         editText = (EditText) activity.findViewById(R.id.edit_text);
         activity.findViewById(R.id.submit).setOnClickListener(this);
+        setMenuEnabled(false);
     }
 
     @Override
@@ -247,15 +254,17 @@ public class ChatController implements View.OnClickListener {
 
     /**
      * 音声対話開始
+     *
+     * @param init 開始直後に会話状態を初期化する場合にtrue
      */
-    public void startVoice() {
+    public void startVoice(boolean init) {
         AudioAdapter.getInstance().pause();
         stopText();
         mode.set(ChatMode.VOICE);
         mic.setIcon(R.drawable.ic_mic_white_24px);
         setSubtitle(R.string.starting);
         status.set(ChatStatus.STARTING);
-        ChatApplication.getInstance().start(ChatStartHandler.forVoiceMode());
+        ChatApplication.getInstance().start(ChatStartHandler.forVoiceMode(init));
     }
 
     /**
@@ -319,7 +328,7 @@ public class ChatController implements View.OnClickListener {
      *
      * @param enable 有効化する場合にtrue
      */
-    private void setMenuEnabled(boolean enable) {
+    public void setMenuEnabled(boolean enable) {
         mic.setEnabled(enable);
         keyboard.setEnabled(enable);
     }

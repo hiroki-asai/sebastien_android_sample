@@ -62,6 +62,8 @@ import static jp.co.atware.trial_app.util.URLConstants.VALUE_CLIENT_SECRET;
 
 public class ApiClient implements CookieJar {
 
+    private static final String NONE = "None";
+
     /**
      * コールバックメソッド
      */
@@ -82,19 +84,16 @@ public class ApiClient implements CookieJar {
         void onRequestFailed(String message);
     }
 
-    private final List<Cookie> cookies;
-    private final ApiCallBack callBack;
-    private final OkHttpClient client = new OkHttpClient().newBuilder().cookieJar(this).build();
-    private final Handler handler = new Handler(Looper.getMainLooper());
+    private ApiCallBack callBack;
+    private List<Cookie> cookies;
+    private OkHttpClient client;
 
     /**
      * コンストラクタ
      *
-     * @param cookies  ユーザダッシュボードログイン時のCookie
      * @param callBack コールバックメソッド
      */
-    public ApiClient(List<Cookie> cookies, ApiCallBack callBack) {
-        this.cookies = cookies;
+    public ApiClient(ApiCallBack callBack) {
         this.callBack = callBack;
     }
 
@@ -112,6 +111,7 @@ public class ApiClient implements CookieJar {
      * アクセストークンを更新
      */
     public void update() {
+        client = new OkHttpClient().newBuilder().build();
         Config config = Config.getInstance();
         String url = new URLBuilder(UPDATE_DEVICE_TOKEN)
                 .append(PARAM_REFRESH_TOKEN, config.getRefreshToken()).toString();
@@ -135,8 +135,12 @@ public class ApiClient implements CookieJar {
 
     /**
      * 新規のアクセストークンを取得
+     *
+     * @param cookies ログインCookie
      */
-    public void create() {
+    public void request(List<Cookie> cookies) {
+        this.cookies = cookies;
+        client = new OkHttpClient().newBuilder().cookieJar(this).build();
         // APIからデバイスIDを取得
         String url = new URLBuilder(ISSUE_DEVICE_ID)
                 .append(PARAM_CLIENT_SECRET, VALUE_CLIENT_SECRET).toString();
@@ -222,13 +226,23 @@ public class ApiClient implements CookieJar {
         Map<String, String> values = toMap(response);
         String accessToken = values.get("device_token");
         String refreshToken = values.get("refresh_token");
-        if (accessToken != null && refreshToken != null) {
+        if (validate(accessToken) && validate(refreshToken)) {
             Config config = Config.getInstance();
             config.setAccessToken(accessToken);
             config.setRefreshToken(refreshToken);
             return true;
         }
         return false;
+    }
+
+    /**
+     * トークン文字列の妥当性を検証
+     *
+     * @param token トークン文字列
+     * @return 妥当なトークン文字列の場合にtrue
+     */
+    private boolean validate(String token) {
+        return token != null && !token.equals(NONE);
     }
 
     /**
@@ -261,7 +275,7 @@ public class ApiClient implements CookieJar {
      * 成功時の処理
      */
     private void success() {
-        handler.post(new Runnable() {
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
             public void run() {
                 callBack.onRequestSuccess(Config.getInstance().getAccessToken());
@@ -275,7 +289,7 @@ public class ApiClient implements CookieJar {
      * @param message エラーメッセージ
      */
     private void failed(final String message) {
-        handler.post(new Runnable() {
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
             public void run() {
                 callBack.onRequestFailed(message);
