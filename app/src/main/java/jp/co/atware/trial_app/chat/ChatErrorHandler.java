@@ -27,53 +27,57 @@
 
 package jp.co.atware.trial_app.chat;
 
+import android.support.v4.app.FragmentTransaction;
+
 import com.nttdocomo.flow.ErrorEventHandler;
 
 import jp.co.atware.trial_app.R;
 import jp.co.atware.trial_app.chat.ChatController.ChatMode;
 import jp.co.atware.trial_app.chat.ChatController.ChatStatus;
 import jp.co.atware.trial_app.fragment.Alert;
-import jp.co.atware.trial_app.fragment.UpdateAccessToken;
+import jp.co.atware.trial_app.fragment.UserDashboard;
+import jp.co.atware.trial_app.util.ApiClient;
+import jp.co.atware.trial_app.util.ApiClient.ApiCallBack;
+import jp.co.atware.trial_app.util.Config;
 
 /**
  * 対話エラー時の処理
  */
-class ChatErrorHandler extends ErrorEventHandler {
+class ChatErrorHandler extends ErrorEventHandler implements ApiCallBack {
 
     private static final int WEB_SOCKET_ERR_FROM = 1000;
     private static final int WEB_SOCKET_ERR_TO = 5000;
     private static final int TOKEN_EXPIRED = 40102;
 
-    private final ChatMode mode;
+    private final ChatController chat = ChatController.getInstance();
+    private final ChatStartHandler onStart;
 
     /**
      * コンストラクタ
      *
-     * @param mode 対話モード
+     * @param onStart 対話開始ハンドラ
      */
-    ChatErrorHandler(ChatMode mode) {
-        this.mode = mode;
+    ChatErrorHandler(ChatStartHandler onStart) {
+        this.onStart = onStart;
     }
 
     @Override
     public void run(int errCode, String message) {
-        ChatController chat = ChatController.getInstance();
         // 音声対話中にWebSocketエラーが発生した場合は自動接続を行う
-        if (mode == ChatMode.VOICE && isWebSocketErr(errCode) && chat.setAutoStart()) {
+        if (onStart.mode == ChatMode.VOICE && isWebSocketErr(errCode) && chat.setAutoStart()) {
             return;
         }
         chat.setStatus(ChatStatus.STOP);
         chat.setSubtitle(R.string.stop);
-        if (mode == ChatMode.VOICE) {
+        if (onStart.mode == ChatMode.VOICE) {
             chat.stopVoice();
         } else {
             chat.stopText();
         }
         if (errCode == TOKEN_EXPIRED) {
-            chat.show(new UpdateAccessToken());
+            new ApiClient(this).update();
         } else {
-            chat.show(Alert.newInstance(ChatApplication.getInstance().getApplicationContext()
-                    .getString(R.string.failed), message));
+            Alert.newInstance(chat.getString(R.string.failed), message).show(chat.getFragmentManager(), null);
         }
     }
 
@@ -86,4 +90,24 @@ class ChatErrorHandler extends ErrorEventHandler {
     private boolean isWebSocketErr(int errCode) {
         return WEB_SOCKET_ERR_FROM <= errCode && errCode <= WEB_SOCKET_ERR_TO;
     }
+
+    @Override
+    public void onRequestSuccess() {
+        if (onStart.mode == ChatMode.VOICE) {
+            chat.startVoice(onStart.init);
+        } else {
+            chat.startText();
+            ChatApplication.getInstance().start(onStart);
+        }
+    }
+
+    @Override
+    public void onRequestFailed(String message) {
+        Config.getInstance().resetAccessToken();
+        UserDashboard uds = new UserDashboard();
+        uds.accessTokenUpdateFailed = true;
+        FragmentTransaction ft = chat.getFragmentManager().beginTransaction();
+        ft.replace(R.id.base_layout, uds).commit();
+    }
+
 }

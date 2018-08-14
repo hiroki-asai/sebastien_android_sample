@@ -51,10 +51,8 @@
     <string name="force_quit">アプリ終了</string>
     <string name="remove_token_title">初期化してよろしいですか</string>
     <string name="remove_token">初期化する</string>
-    <string name="update_token_title">認証情報の有効期限切れ</string>
-    <string name="update_token_message">有効期限を更新しますか</string>
-    <string name="update_token">更新する</string>
-    <string name="update_token_success">有効期限を更新しました</string>
     <string name="request_token_start">認証情報取得中</string>
     <string name="request_token_failed">認証情報の取得に失敗しました</string>
+    <string name="update_token_failed">認証情報の更新に失敗しました</string>
+    <string name="request_token_again">お手数ですが認証情報を新たに取得して下さい。</string>
 </resources>

@@ -40,8 +40,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar.OnMenuItemClickListener;
 import android.view.MenuItem;
 
-import com.nttdocomo.sebastien.Sebastien.OnConnectedWithHFP;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,7 +48,6 @@ import jp.co.atware.trial_app.chat.ChatController;
 import jp.co.atware.trial_app.fragment.EditConfig;
 import jp.co.atware.trial_app.fragment.Exit;
 import jp.co.atware.trial_app.fragment.ResetAccessToken;
-import jp.co.atware.trial_app.fragment.UserDashboard;
 import jp.co.atware.trial_app.util.Config;
 import jp.co.atware.trial_app.util.URLConstants;
 
@@ -69,19 +66,20 @@ public class MainActivity extends AppCompatActivity implements OnMenuItemClickLi
 
     private ChatApplication app;
 
+    /**
+     * Voice Command起動判定
+     *
+     * @return Voice Commandで起動した場合にtrue
+     */
+    public boolean isStartVoiceCommand() {
+        return getIntent().getAction().equals(Intent.ACTION_VOICE_COMMAND);
+    }
+
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        if (isStartVoiceCommand()) {
-            final ChatController chat = ChatController.getInstance();
-            chat.setMenuEnabled(false);
-            app.setOnConnectedWithHFP(new OnConnectedWithHFP() {
-                @Override
-                public void onConnected() {
-                    app.setOnConnectedWithHFP(null);
-                    chat.startVoice(false);
-                }
-            });
+        if (Config.getInstance().getAccessToken() != null && isStartVoiceCommand()) {
+            app.startOnEnableHFP(false);
         }
     }
 
@@ -91,10 +89,7 @@ public class MainActivity extends AppCompatActivity implements OnMenuItemClickLi
         getWindow().setSoftInputMode(SOFT_INPUT_STATE_ALWAYS_HIDDEN);
         setContentView(R.layout.activity_main);
         app = (ChatApplication) getApplication();
-        app.init(this);
-    }
-
-    public void init() {
+        // 必須権限チェック
         List<String> requests = new ArrayList<>();
         for (String permission : REQUIRED_PERMISSIONS) {
             if (ContextCompat.checkSelfPermission(this, permission) != PERMISSION_GRANTED) {
@@ -102,7 +97,7 @@ public class MainActivity extends AppCompatActivity implements OnMenuItemClickLi
             }
         }
         if (requests.isEmpty()) {
-            setConnection();
+            app.init(this);
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             requestPermissions(requests.toArray(new String[0]), REQUEST_CODE);
         } else {
@@ -120,39 +115,13 @@ public class MainActivity extends AppCompatActivity implements OnMenuItemClickLi
                 }
             }
             if (permissions.length == granted) {
-                setConnection();
+                app.init(this);
             } else {
                 alertPermissions();
             }
         } else {
             super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         }
-    }
-
-    /**
-     * 接続情報設定
-     */
-    private void setConnection() {
-        String accessToken = Config.getInstance().getAccessToken();
-        if (accessToken != null) {
-            app.setConnection(accessToken);
-            if (isStartVoiceCommand()) {
-                ChatController.getInstance().startVoice(true);
-            }
-        } else {
-            // ユーザダッシュボードのログイン画面を表示
-            FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-            ft.replace(R.id.base_layout, new UserDashboard()).commitAllowingStateLoss();
-        }
-    }
-
-    /**
-     * Voice Command起動判定
-     *
-     * @return Voice Commandで起動した場合にtrue
-     */
-    public boolean isStartVoiceCommand() {
-        return getIntent().getAction().equals(Intent.ACTION_VOICE_COMMAND);
     }
 
     /**

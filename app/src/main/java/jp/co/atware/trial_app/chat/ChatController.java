@@ -33,7 +33,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.support.annotation.ColorRes;
 import android.support.annotation.StringRes;
-import android.support.v4.app.DialogFragment;
+import android.support.v4.app.FragmentManager;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
@@ -107,13 +107,12 @@ public class ChatController implements View.OnClickListener {
             if (status.get() != ChatStatus.START) {
                 return;
             }
-            MainActivity activity = getActivity();
             if (activity.isStartVoiceCommand() && !AudioAdapter.getInstance().isPlaying()) {
                 activity.moveTaskToBack(true);
             } else {
                 stopVoice();
-                String message = getActivity().getString(R.string.timeout);
-                show(Alert.newInstance(null, message));
+                String message = getString(R.string.timeout);
+                Alert.newInstance(null, message).show(getFragmentManager(), null);
             }
         }
     };
@@ -137,9 +136,9 @@ public class ChatController implements View.OnClickListener {
         @Override
         public void run() {
             if (status.get() != ChatStatus.START) {
-                String message = getActivity().getString(R.string.starting);
+                String message = getString(R.string.starting);
                 starting = Progress.newInstance(message, false);
-                show(starting);
+                starting.show(getFragmentManager(), null);
             }
         }
     };
@@ -151,9 +150,9 @@ public class ChatController implements View.OnClickListener {
         @Override
         public void run() {
             if (status.get() == ChatStatus.START) {
-                String message = getActivity().getString(R.string.waiting);
+                String message = getString(R.string.waiting);
                 waiting = Progress.newInstance(message, true);
-                show(waiting);
+                waiting.show(getFragmentManager(), null);
             }
         }
     };
@@ -162,6 +161,7 @@ public class ChatController implements View.OnClickListener {
     private final AtomicReference<ChatStatus> status = new AtomicReference<>();
     private final Handler handler = new Handler(Looper.getMainLooper());
 
+    private MainActivity activity;
     private Toolbar toolBar;
     private MenuItem mic;
     private MenuItem keyboard;
@@ -184,6 +184,7 @@ public class ChatController implements View.OnClickListener {
      * @param activity 対話アプリのアクティビティ
      */
     void init(MainActivity activity) {
+        this.activity = activity;
         // ToolBar関連
         toolBar = (Toolbar) activity.findViewById(R.id.tool_bar);
         toolBar.inflateMenu(R.menu.main);
@@ -196,7 +197,6 @@ public class ChatController implements View.OnClickListener {
         inputArea = (LinearLayout) activity.findViewById(R.id.input_area);
         editText = (EditText) activity.findViewById(R.id.edit_text);
         activity.findViewById(R.id.submit).setOnClickListener(this);
-        setMenuEnabled(false);
     }
 
     @Override
@@ -207,7 +207,7 @@ public class ChatController implements View.OnClickListener {
             return;
         }
         if (MAX_LENGTH < text.length()) {
-            Toast.makeText(getActivity(), R.string.length_over, Toast.LENGTH_SHORT).show();
+            Toast.makeText(activity, R.string.length_over, Toast.LENGTH_SHORT).show();
         } else {
             ChatApplication app = ChatApplication.getInstance();
             app.show(new Balloon(Balloon.BalloonType.USER_VOICE, text));
@@ -226,6 +226,7 @@ public class ChatController implements View.OnClickListener {
         clearAutoStart();
         clearStarting();
         clearWaiting();
+        activity = null;
         toolBar = null;
         mic = null;
         keyboard = null;
@@ -394,12 +395,22 @@ public class ChatController implements View.OnClickListener {
     }
 
     /**
-     * ダイアログを表示
+     * FragmentManagerを取得
      *
-     * @param dialog DialogFragmentインスタンス
+     * @return FragmentManager
      */
-    void show(DialogFragment dialog) {
-        dialog.show(getActivity().getSupportFragmentManager(), null);
+    FragmentManager getFragmentManager() {
+        return activity.getSupportFragmentManager();
+    }
+
+    /**
+     * 文字列リソースを取得
+     *
+     * @param resId リソースID
+     * @return 文字列リソース
+     */
+    String getString(@StringRes int resId) {
+        return activity.getString(resId);
     }
 
     /**
@@ -483,22 +494,13 @@ public class ChatController implements View.OnClickListener {
      */
     private void hideKeyboard() {
         editText.setText("");
-        View focus = getActivity().getCurrentFocus();
+        View focus = activity.getCurrentFocus();
         if (focus != null) {
-            InputMethodManager im = (InputMethodManager) getActivity()
+            InputMethodManager im = (InputMethodManager) activity
                     .getSystemService(Context.INPUT_METHOD_SERVICE);
             im.hideSoftInputFromWindow(focus.getWindowToken(),
                     InputMethodManager.HIDE_NOT_ALWAYS);
         }
-    }
-
-    /**
-     * MainActivityを取得
-     *
-     * @return MainActivity
-     */
-    private MainActivity getActivity() {
-        return (MainActivity) editText.getContext();
     }
 
 }

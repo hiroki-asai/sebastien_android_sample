@@ -28,7 +28,7 @@
 package jp.co.atware.trial_app.util;
 
 /**
- * URL関連の定数
+ * URL定義
  */
 public class URLConstants {
     // UDSのURL
@@ -44,11 +44,5 @@ public class URLConstants {
 
     // デベロッパーダッシュボード
     public static final String DEVELOPER_DASHBOARD = "https://developers.sebastien.ai";
-
-    // パラメータ
-    public static final String PARAM_CLIENT_SECRET = "client_secret";
-    public static final String VALUE_CLIENT_SECRET = "6612508e-3c18-4e90-be37-a29b30ea2140";
-    public static final String PARAM_DEVICE_ID = "device_id";
-    public static final String PARAM_REFRESH_TOKEN = "refresh_token";
 
 }

@@ -39,7 +39,6 @@ import android.webkit.WebView;
 import java.util.List;
 
 import jp.co.atware.trial_app.R;
-import jp.co.atware.trial_app.chat.ChatApplication;
 import jp.co.atware.trial_app.util.ApiClient;
 import jp.co.atware.trial_app.util.ApiClient.ApiCallBack;
 import jp.co.atware.trial_app.util.Config;
@@ -56,6 +55,8 @@ import static jp.co.atware.trial_app.util.URLConstants.USER_DASHBOARD;
 public class UserDashboard extends Fragment implements LoginCallBack, ApiCallBack {
 
     private static final String USER_AGENT = "Mozilla/5.0 Google";
+
+    public boolean accessTokenUpdateFailed = false;
 
     private Progress progress;
 
@@ -80,6 +81,11 @@ public class UserDashboard extends Fragment implements LoginCallBack, ApiCallBac
         uds.getSettings().setJavaScriptEnabled(true);
         uds.getSettings().setUserAgentString(USER_AGENT);
         uds.loadUrl(USER_DASHBOARD);
+        if (accessTokenUpdateFailed) {
+            Alert dialog = Alert.newInstance(getString(R.string.update_token_failed), getString(R.string.request_token_again));
+            dialog.setTargetFragment(this, 2);
+            dialog.show(getFragmentManager(), null);
+        }
     }
 
     @Override
@@ -91,11 +97,10 @@ public class UserDashboard extends Fragment implements LoginCallBack, ApiCallBac
     }
 
     @Override
-    public void onRequestSuccess(String accessToken) {
+    public void onRequestSuccess() {
         if (progress != null) {
             progress.dismiss();
         }
-        ChatApplication.getInstance().setConnection(accessToken);
         getFragmentManager().beginTransaction().remove(this).commit();
     }
 
@@ -104,6 +109,8 @@ public class UserDashboard extends Fragment implements LoginCallBack, ApiCallBac
         if (progress != null) {
             progress.dismiss();
         }
+        // client_secretを初期化
+        Config.getInstance().resetClientSecret();
         Exit dialog = Exit.newInstance(getString(R.string.request_token_failed), message);
         dialog.setTargetFragment(this, 1);
         dialog.show(getFragmentManager(), null);

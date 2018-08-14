@@ -34,6 +34,7 @@ import android.graphics.Color;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.support.v4.app.FragmentTransaction;
 import android.util.Log;
 import android.view.ViewConfiguration;
 import android.webkit.WebView;
@@ -60,6 +61,7 @@ import jp.co.atware.trial_app.balloon.Balloon;
 import jp.co.atware.trial_app.balloon.BalloonAdapter;
 import jp.co.atware.trial_app.chat.ChatController.ChatMode;
 import jp.co.atware.trial_app.chat.ChatController.ChatStatus;
+import jp.co.atware.trial_app.fragment.UserDashboard;
 import jp.co.atware.trial_app.metadata.DeviceInfo;
 import jp.co.atware.trial_app.metadata.DeviceInfo.PlayTTS;
 import jp.co.atware.trial_app.metadata.MetaData;
@@ -118,77 +120,8 @@ public class ChatApplication extends Application {
         chatView.setAdapter(balloonAdapter);
         chatView.setFriction(ViewConfiguration.getScrollFriction() * SCROLL_WEIGHT);
         chat.init(activity);
-        sdk.enableBluetoothSupport();
-        sdk.setContext(getApplicationContext());
-        if (isHeadSetConnected()) {
-            setOnConnectedWithHFP(new OnConnectedWithHFP() {
-                @Override
-                public void onConnected() {
-                    setOnConnectedWithHFP(null);
-                    activity.init();
-                }
-            });
-        } else {
-            activity.init();
-        }
-    }
-
-    /**
-     * ヘッドセット接続状態を取得
-     *
-     * @return ヘッドセットが接続されている場合にtrue
-     */
-    private boolean isHeadSetConnected() {
-        BluetoothAdapter bta = BluetoothAdapter.getDefaultAdapter();
-        return bta != null && bta.getProfileConnectionState(BluetoothProfile.HEADSET)
-                == BluetoothAdapter.STATE_CONNECTED;
-    }
-
-    /**
-     * HFP有効化完了時のコールバックを設定
-     *
-     * @param callback コールバック
-     */
-    public void setOnConnectedWithHFP(OnConnectedWithHFP callback) {
-        sdk.setOnConnectedWithHFP(callback);
-    }
-
-    /**
-     * 一時停止時の処理
-     */
-    public void onPause() {
-        if (chat.isVoiceMode()) {
-            chat.stopVoice();
-        } else if (chat.isTextMode()) {
-            chat.stopText();
-        }
-        audioAdapter.pause();
-    }
-
-    /**
-     * 終了時の処理
-     */
-    public void onDestroy() {
-        INSTANCE = null;
-        audioAdapter.destroy();
-        chat.destroy();
-        chatView = null;
-    }
-
-    /**
-     * 接続情報設定
-     *
-     * @param accessToken アクセストークン
-     */
-    public void setConnection(String accessToken) {
-        Config config = Config.getInstance();
-        sdk.set("UseSSL", config.isSSL());
         sdk.set("EnableOCSP", true);
         sdk.set("OutputGain", 1.00);
-        sdk.setHost(config.getHost());
-        sdk.setPort(config.getPort());
-        sdk.setURLPath(config.getPath());
-        sdk.setAccessToken(accessToken);
         // メタデータ受信時の処理
         sdk.setOnMetaOut(new StringEventHandler() {
             @Override
@@ -245,7 +178,57 @@ public class ChatApplication extends Application {
 
             }
         });
-        chat.setMenuEnabled(true);
+        sdk.enableBluetoothSupport();
+        sdk.setContext(getApplicationContext());
+        if (Config.getInstance().getAccessToken() == null) {
+            // ユーザダッシュボードのログイン画面を表示
+            FragmentTransaction ft = activity.getSupportFragmentManager().beginTransaction();
+            ft.replace(R.id.base_layout, new UserDashboard()).commitAllowingStateLoss();
+        } else if (activity.isStartVoiceCommand()) {
+            startOnEnableHFP(true);
+        }
+    }
+
+
+    /**
+     * HFPが有効化された時に音声対話を開始
+     *
+     * @param init 音声対話開始時に#INITを送信する場合にtrue
+     */
+    public void startOnEnableHFP(final boolean init) {
+        BluetoothAdapter bta = BluetoothAdapter.getDefaultAdapter();
+        if (bta != null && bta.getProfileConnectionState(BluetoothProfile.HEADSET)
+                == BluetoothAdapter.STATE_CONNECTED) {
+            sdk.setOnConnectedWithHFP(new OnConnectedWithHFP() {
+                @Override
+                public void onConnected() {
+                    sdk.setOnConnectedWithHFP(null);
+                    chat.startVoice(init);
+                }
+            });
+        }
+    }
+
+    /**
+     * 一時停止時の処理
+     */
+    public void onPause() {
+        if (chat.isVoiceMode()) {
+            chat.stopVoice();
+        } else if (chat.isTextMode()) {
+            chat.stopText();
+        }
+        audioAdapter.pause();
+    }
+
+    /**
+     * 終了時の処理
+     */
+    public void onDestroy() {
+        INSTANCE = null;
+        audioAdapter.destroy();
+        chat.destroy();
+        chatView = null;
     }
 
     /**
@@ -409,7 +392,13 @@ public class ChatApplication extends Application {
     void start(ChatStartHandler onStart) {
         chat.setStatus(ChatStatus.STARTING);
         sdk.setMicMute(onStart.mode == ChatMode.TEXT);
-        sdk.start(onStart, new ChatErrorHandler(onStart.mode));
+        Config config = Config.getInstance();
+        sdk.set("UseSSL", config.isSSL());
+        sdk.setHost(config.getHost());
+        sdk.setPort(config.getPort());
+        sdk.setURLPath(config.getPath());
+        sdk.setAccessToken(config.getAccessToken());
+        sdk.start(onStart, new ChatErrorHandler(onStart));
     }
 
     /**

@@ -35,7 +35,6 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AlertDialog.Builder;
-import android.webkit.CookieManager;
 
 import jp.co.atware.trial_app.R;
 import jp.co.atware.trial_app.chat.ChatApplication;
@@ -54,7 +53,7 @@ public class ResetAccessToken extends DialogFragment {
                 .setPositiveButton(R.string.remove_token, new OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
-                        Config.getInstance().removeAccessToken();
+                        Config.getInstance().resetAccessToken();
                         ChatApplication.getInstance().onPause();
                         FragmentTransaction ft = getFragmentManager().beginTransaction();
                         ft.replace(R.id.base_layout, new UserDashboard()).commit();

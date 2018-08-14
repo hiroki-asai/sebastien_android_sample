@@ -64,6 +64,7 @@ public class Config {
         HOST("spf.sebastien.ai"),
         PORT("443"),
         PATH("/talk"),
+        CLIENT_SECRET("6612508e-3c18-4e90-be37-a29b30ea2140"),
         ACCESS_TOKEN(null),
         REFRESH_TOKEN(null);
 
@@ -161,6 +162,32 @@ public class Config {
     }
 
     /**
+     * クライアントシークレットを取得
+     *
+     * @return クライアントシークレット
+     */
+    public String getClientSecret() {
+        return get(Keys.CLIENT_SECRET);
+    }
+
+    /**
+     * クライアントシークレットを設定
+     *
+     * @param clientSecret クライアントシークレット
+     * @return クライアントシークレットが変更された場合にtrue
+     */
+    public boolean setClientSecret(String clientSecret) {
+        return set(Keys.CLIENT_SECRET, clientSecret);
+    }
+
+    /**
+     * クライアントシークレットを初期化
+     */
+    public void resetClientSecret() {
+        reset(Keys.CLIENT_SECRET);
+    }
+
+    /**
      * アクセストークンを取得
      *
      * @return アクセストークン
@@ -180,6 +207,13 @@ public class Config {
     }
 
     /**
+     * アクセストークンを初期化
+     */
+    public void resetAccessToken() {
+        reset(Keys.ACCESS_TOKEN);
+    }
+
+    /**
      * リフレッシュトークンを取得
      *
      * @return リフレッシュトークン
@@ -196,15 +230,6 @@ public class Config {
      */
     public boolean setRefreshToken(String refreshToken) {
         return set(Keys.REFRESH_TOKEN, refreshToken);
-    }
-
-    /**
-     * アクセストークンを削除
-     */
-    public void removeAccessToken() {
-        Editor editor = config.edit();
-        editor.remove(Keys.ACCESS_TOKEN.name());
-        editor.apply();
     }
 
     /**
@@ -241,6 +266,17 @@ public class Config {
         editor.putString(key.name(), value.trim());
         editor.apply();
         return true;
+    }
+
+    /**
+     * SharedPreferencesの値を初期化
+     *
+     * @param key キー値
+     */
+    private void reset(Keys key) {
+        Editor editor = config.edit();
+        editor.remove(key.name());
+        editor.apply();
     }
 
     /**

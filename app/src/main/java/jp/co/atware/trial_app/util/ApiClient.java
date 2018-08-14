@@ -29,6 +29,7 @@ package jp.co.atware.trial_app.util;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -49,19 +50,22 @@ import okhttp3.Response;
 
 import static jp.co.atware.trial_app.util.URLConstants.DEVICE_REGISTRATION;
 import static jp.co.atware.trial_app.util.URLConstants.ISSUE_DEVICE_ID;
-import static jp.co.atware.trial_app.util.URLConstants.PARAM_CLIENT_SECRET;
-import static jp.co.atware.trial_app.util.URLConstants.PARAM_DEVICE_ID;
-import static jp.co.atware.trial_app.util.URLConstants.PARAM_REFRESH_TOKEN;
 import static jp.co.atware.trial_app.util.URLConstants.REQ_DEVICE_TOKEN;
 import static jp.co.atware.trial_app.util.URLConstants.UPDATE_DEVICE_TOKEN;
-import static jp.co.atware.trial_app.util.URLConstants.VALUE_CLIENT_SECRET;
 
 /**
  * APIからアクセストークンを取得
  */
 
-public class ApiClient implements CookieJar {
+public class ApiClient {
 
+    private static final String TAG = "ApiClient";
+    private static final String CLIENT_SECRET = "client_secret";
+    private static final String DEVICE_ID = "device_id";
+    private static final String DEVICE_TOKEN = "device_token";
+    private static final String REFRESH_TOKEN = "refresh_token";
+    private static final String STATUS = "status";
+    private static final String VALID = "valid";
     private static final String NONE = "None";
 
     /**
@@ -71,10 +75,8 @@ public class ApiClient implements CookieJar {
 
         /**
          * アクセストークン取得成功時の処理
-         *
-         * @param accessToken アクセストークン
          */
-        void onRequestSuccess(String accessToken);
+        void onRequestSuccess();
 
         /**
          * アクセストークン取得失敗時の処理
@@ -84,8 +86,20 @@ public class ApiClient implements CookieJar {
         void onRequestFailed(String message);
     }
 
-    private ApiCallBack callBack;
-    private List<Cookie> cookies;
+    /**
+     * API実行結果を受け取る処理
+     */
+    private interface Consumer {
+
+        /**
+         * API実行結果を受け取る処理
+         *
+         * @param result API実行結果
+         */
+        void accept(Map<String, String> result);
+    }
+
+    private final ApiCallBack callBack;
     private OkHttpClient client;
 
     /**
@@ -97,68 +111,34 @@ public class ApiClient implements CookieJar {
         this.callBack = callBack;
     }
 
-    @Override
-    public void saveFromResponse(HttpUrl url, List<Cookie> cookies) {
-        // do nothing
-    }
-
-    @Override
-    public List<Cookie> loadForRequest(HttpUrl url) {
-        return cookies;
-    }
-
-    /**
-     * アクセストークンを更新
-     */
-    public void update() {
-        client = new OkHttpClient().newBuilder().build();
-        Config config = Config.getInstance();
-        String url = new URLBuilder(UPDATE_DEVICE_TOKEN)
-                .append(PARAM_REFRESH_TOKEN, config.getRefreshToken()).toString();
-        get(url, new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                failed("update_device_token failed." + e);
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                if (saveTokens(response)) {
-                    // アクセストークンの更新を通知
-                    success();
-                } else {
-                    failed("update_device_token failed.");
-                }
-            }
-        });
-    }
-
     /**
      * 新規のアクセストークンを取得
      *
      * @param cookies ログインCookie
      */
-    public void request(List<Cookie> cookies) {
-        this.cookies = cookies;
-        client = new OkHttpClient().newBuilder().cookieJar(this).build();
-        // APIからデバイスIDを取得
-        String url = new URLBuilder(ISSUE_DEVICE_ID)
-                .append(PARAM_CLIENT_SECRET, VALUE_CLIENT_SECRET).toString();
-        get(url, new Callback() {
+    public void request(final List<Cookie> cookies) {
+        client = new OkHttpClient().newBuilder().cookieJar(new CookieJar() {
             @Override
-            public void onFailure(Call call, IOException e) {
-                failed("issue_device_id failed." + e);
+            public void saveFromResponse(HttpUrl url, List<Cookie> cookies) {
+
             }
 
             @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                // 取得したデバイスIDを登録
-                String deviceId = toMap(response).get("device_id");
-                if (deviceId != null) {
-                    registerDevice(deviceId);
-                } else {
-                    failed("issue_device_id failed.");
+            public List<Cookie> loadForRequest(HttpUrl url) {
+                return cookies;
+            }
+        }).build();
+        // APIからデバイスIDを取得
+        String url = new URLBuilder(ISSUE_DEVICE_ID)
+                .append(CLIENT_SECRET, Config.getInstance().getClientSecret()).toString();
+        get(url, new Consumer() {
+            @Override
+            public void accept(Map<String, String> result) {
+                String deviceId = result.get(DEVICE_ID);
+                if (deviceId == null) {
+                    throw new RuntimeException("device_id is not found in response.");
                 }
+                registerDevice(deviceId);
             }
         });
     }
@@ -170,21 +150,11 @@ public class ApiClient implements CookieJar {
      */
     private void registerDevice(final String deviceId) {
         String url = new URLBuilder(DEVICE_REGISTRATION)
-                .append(PARAM_DEVICE_ID, deviceId).toString();
-        get(url, new Callback() {
+                .append(DEVICE_ID, deviceId).toString();
+        get(url, new Consumer() {
             @Override
-            public void onFailure(Call call, IOException e) {
-                failed("device_registration failed." + e);
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                // 登録したデバイスIDでアクセストークンを取得
-                if ("valid".equals(toMap(response).get("status"))) {
-                    requestDeviceToken(deviceId);
-                } else {
-                    failed("device_registration failed.");
-                }
+            public void accept(Map<String, String> result) {
+                requestDeviceToken(deviceId);
             }
         });
     }
@@ -196,20 +166,65 @@ public class ApiClient implements CookieJar {
      */
     private void requestDeviceToken(String deviceId) {
         String url = new URLBuilder(REQ_DEVICE_TOKEN)
-                .append(PARAM_DEVICE_ID, deviceId).toString();
-        get(url, new Callback() {
+                .append(DEVICE_ID, deviceId).toString();
+        get(url, new Consumer() {
+            @Override
+            public void accept(Map<String, String> result) {
+                saveTokens(result);
+            }
+        });
+    }
+
+    /**
+     * アクセストークンを更新
+     */
+    public void update() {
+        client = new OkHttpClient().newBuilder().build();
+        String url = new URLBuilder(UPDATE_DEVICE_TOKEN)
+                .append(REFRESH_TOKEN, Config.getInstance().getRefreshToken()).toString();
+        get(url, new Consumer() {
+            @Override
+            public void accept(Map<String, String> result) {
+                saveTokens(result);
+            }
+        });
+    }
+
+    /**
+     * GETリクスエストを非同期で実行
+     *
+     * @param url      URL
+     * @param consumer API実行結果を受け取る処理
+     */
+    private void get(String url, final Consumer consumer) {
+        Call call = client.newCall(new Request.Builder().url(url).build());
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                failed("req_device_token failed." + e);
+                Log.w(TAG, "unexpected error occurred.", e);
+                failed(call, e);
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
-                if (saveTokens(response)) {
-                    // アクセストークンの取得を通知
-                    success();
+                if (response.isSuccessful()) {
+                    try {
+                        ObjectMapper mapper = new ObjectMapper();
+                        Map<String, String> result = mapper.readValue(response.body().string(),
+                                new TypeReference<HashMap<String, String>>() {
+                                });
+                        String status = result.get(STATUS);
+                        if (VALID.equals(status)) {
+                            consumer.accept(result);
+                        } else {
+                            failed(call, "status=" + status);
+                        }
+                    } catch (Exception e) {
+                        failed(call, e);
+                    }
+
                 } else {
-                    failed("req_device_token failed.");
+                    failed(call, "code=" + response.code());
                 }
             }
         });
@@ -218,77 +233,57 @@ public class ApiClient implements CookieJar {
     /**
      * アクセストークンとリフレッシュトークンを保存
      *
-     * @param response レスポンス
-     * @return 保存が完了した場合にtrue
-     * @throws IOException 保存失敗
+     * @param result API実行結果
      */
-    private boolean saveTokens(Response response) throws IOException {
-        Map<String, String> values = toMap(response);
-        String accessToken = values.get("device_token");
-        String refreshToken = values.get("refresh_token");
-        if (validate(accessToken) && validate(refreshToken)) {
-            Config config = Config.getInstance();
-            config.setAccessToken(accessToken);
-            config.setRefreshToken(refreshToken);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * トークン文字列の妥当性を検証
-     *
-     * @param token トークン文字列
-     * @return 妥当なトークン文字列の場合にtrue
-     */
-    private boolean validate(String token) {
-        return token != null && !token.equals(NONE);
-    }
-
-    /**
-     * GETリクスエストを非同期で実行
-     *
-     * @param url      URL
-     * @param callback 実行後のコールバック
-     */
-    private void get(String url, Callback callback) {
-        Request req = new Request.Builder().url(url).build();
-        Call call = client.newCall(req);
-        call.enqueue(callback);
-    }
-
-    /**
-     * JSON形式のレスポンスをMapに変換
-     *
-     * @param response レスポンス
-     * @return 変換されたMap
-     * @throws IOException 変換失敗
-     */
-    private Map<String, String> toMap(Response response) throws IOException {
-        ObjectMapper mapper = new ObjectMapper();
-        return mapper.readValue(response.body().string(),
-                new TypeReference<HashMap<String, String>>() {
-                });
-    }
-
-    /**
-     * 成功時の処理
-     */
-    private void success() {
+    private void saveTokens(Map<String, String> result) {
+        String accessToken = getToken(result, DEVICE_TOKEN);
+        String refreshToken = getToken(result, REFRESH_TOKEN);
+        Config config = Config.getInstance();
+        config.setAccessToken(accessToken);
+        config.setRefreshToken(refreshToken);
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
             public void run() {
-                callBack.onRequestSuccess(Config.getInstance().getAccessToken());
+                callBack.onRequestSuccess();
             }
         });
     }
 
     /**
+     * トークンを取得
+     *
+     * @param result API実行結果
+     * @param key    トークン取得用のkey文字列
+     * @return トークン
+     */
+    private String getToken(Map<String, String> result, String key) {
+        String token = result.get(key);
+        if (token == null || token.equals(NONE)) {
+            throw new RuntimeException(key + " is not found in response.");
+        }
+        return token;
+    }
+
+    /**
      * 失敗時の処理
      *
-     * @param message エラーメッセージ
+     * @param call API実行タスク
+     * @param e    失敗時の例外
      */
-    private void failed(final String message) {
+    private void failed(Call call, Exception e) {
+        failed(call, (e.getMessage() != null) ? e.getMessage() : e.getClass().getSimpleName());
+    }
+
+    /**
+     * 失敗時の処理
+     *
+     * @param call   API実行タスク
+     * @param reason 失敗の理由
+     */
+    private void failed(Call call, String reason) {
+        List<String> path = call.request().url().pathSegments();
+        final String message = String.format("%s is failed. %s", path.get(path.size() - 1), reason);
+        Log.w(TAG, message);
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
             public void run() {

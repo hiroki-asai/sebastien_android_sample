@@ -32,6 +32,7 @@ import android.content.DialogInterface;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.DialogFragment;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AlertDialog.Builder;
 import android.view.View;
@@ -68,19 +69,22 @@ public class EditConfig extends DialogFragment {
         // URLパス
         final EditText path = (EditText) configView.findViewById(R.id.edit_path);
         path.setText(config.getPath());
+        // client_secret
+        final EditText clientSecret = (EditText) configView.findViewById(R.id.edit_client_secret);
+        clientSecret.setText(config.getClientSecret());
 
         final AlertDialog configDialog = new Builder(getActivity()).setView(configView)
                 .setPositiveButton(R.string.save, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
-                        boolean sslChanged = config.setSSL(ssl.isChecked());
-                        boolean hostChanged = config.setHost(host.getText().toString());
-                        boolean portChanged = config.setPort(port.getText().toString());
-                        boolean pathChanged = config.setPath(path.getText().toString());
-                        if (sslChanged || hostChanged || portChanged || pathChanged) {
-                            ChatApplication app = ChatApplication.getInstance();
-                            app.onPause();
-                            app.setConnection(config.getAccessToken());
+                        config.setSSL(ssl.isChecked());
+                        config.setHost(host.getText().toString());
+                        config.setPort(port.getText().toString());
+                        config.setPath(path.getText().toString());
+                        if (config.setClientSecret(clientSecret.getText().toString())) {
+                            ChatApplication.getInstance().onPause();
+                            FragmentTransaction ft = getFragmentManager().beginTransaction();
+                            ft.replace(R.id.base_layout, new UserDashboard()).commit();
                         }
                     }
                 })
@@ -98,6 +102,7 @@ public class EditConfig extends DialogFragment {
                         host.setText(Keys.HOST.defaultValue);
                         port.setText(Keys.PORT.defaultValue);
                         path.setText(Keys.PATH.defaultValue);
+                        clientSecret.setText(Keys.CLIENT_SECRET.defaultValue);
                     }
                 });
             }

@@ -77,4 +77,17 @@
         android:layout_width="200dp"
         android:layout_height="wrap_content" />
 
+    <TextView
+        android:textSize="12sp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="client_secretを入力" />
+    <EditText
+        android:id="@+id/edit_client_secret"
+        android:textSize="14sp"
+        android:inputType="textUri"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
 </LinearLayout>
