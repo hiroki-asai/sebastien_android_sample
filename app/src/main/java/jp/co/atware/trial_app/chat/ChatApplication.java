@@ -42,9 +42,9 @@ import android.widget.ListView;
 
 import com.nttdocomo.flow.EventHandler;
 import com.nttdocomo.flow.StringEventHandler;
-import com.nttdocomo.sebastien.Sebastien;
-import com.nttdocomo.sebastien.Sebastien.OnConnectedWithHFP;
-import com.nttdocomo.sebastien.util.NluMetaData;
+import com.nttdocomo.speak.Speak;
+import com.nttdocomo.speak.Speak.OnConnectedWithHFP;
+import com.nttdocomo.speak.util.NluMetaData;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -66,6 +66,7 @@ import jp.co.atware.trial_app.metadata.DeviceInfo;
 import jp.co.atware.trial_app.metadata.DeviceInfo.PlayTTS;
 import jp.co.atware.trial_app.metadata.MetaData;
 import jp.co.atware.trial_app.metadata.MetaDataParser;
+import jp.co.atware.trial_app.metadata.Postback;
 import jp.co.atware.trial_app.metadata.SwitchAgent.AgentType;
 import jp.co.atware.trial_app.util.Config;
 
@@ -89,13 +90,14 @@ public class ChatApplication extends Application {
         return INSTANCE;
     }
 
-    private final Sebastien sdk = new Sebastien();
+    private final Speak sdk = new Speak();
     private final List<Balloon> balloonList = new ArrayList<>();
     private final BalloonAdapter balloonAdapter = new BalloonAdapter(balloonList);
     private final AudioAdapter audioAdapter = AudioAdapter.getInstance();
     private final ChatController chat = ChatController.getInstance();
     private final MetaDataParser parser = new MetaDataParser();
     private final AtomicReference<AgentType> switchAfterUtt = new AtomicReference<>();
+    private final AtomicReference<Postback> postBackAfterUtt = new AtomicReference<>();
     private final Queue<Balloon> playAfterUtt = new LinkedList<>();
     private final Handler handler = new Handler(Looper.getMainLooper());
 
@@ -165,7 +167,17 @@ public class ChatApplication extends Application {
                     @Override
                     public void run() {
                         // 合成音声再生後のエージェント切り替え
-                        onSwitchAgent(switchAfterUtt.get());
+                        AgentType agentType = switchAfterUtt.get();
+                        if (agentType != null) {
+                            switchAfterUtt.set(null);
+                            onSwitchAgent(agentType);
+                        }
+                        // 合成音声再生後のpostback送信
+                        Postback postback = postBackAfterUtt.get();
+                        if (postback != null) {
+                            postBackAfterUtt.set(null);
+                            putMeta(postback.payload, postback.clientData);
+                        }
                         // 合成音声再生後のメディア再生
                         Balloon balloon = playAfterUtt.poll();
                         if (balloon != null && playAfterUtt.isEmpty()) {
@@ -241,10 +253,9 @@ public class ChatApplication extends Application {
             playAfterUtt.offer(null);
         }
         if (meta.switchAgent != null) {
-            if (chat.isVoiceMode() && meta.switchAgent.afterUtt) {
+            if (meta.switchAgent.afterUtt && chat.isVoiceMode()) {
                 switchAfterUtt.set(meta.switchAgent.agentType);
             } else {
-                switchAfterUtt.set(null);
                 onSwitchAgent(meta.switchAgent.agentType);
             }
         }
@@ -280,7 +291,11 @@ public class ChatApplication extends Application {
             show(balloon);
         }
         if (meta.postback != null) {
-            putMeta(meta.postback.payload, meta.postback.clientData);
+            if (meta.postback.afterUtt && chat.isVoiceMode()) {
+                postBackAfterUtt.set(meta.postback);
+            } else {
+                putMeta(meta.postback.payload, meta.postback.clientData);
+            }
         }
     }
 

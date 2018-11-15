@@ -323,6 +323,7 @@ public class MetaDataParser {
             Postback result = new Postback();
             result.payload = findString(map, PAYLOAD);
             result.clientData = findMap(map, CLIENT_DATA);
+            result.afterUtt = Boolean.valueOf(findString(map, AFTER_UTT));
             return result;
         }
         return null;

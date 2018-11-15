@@ -36,6 +36,7 @@ public class Postback {
 
     public String payload;
     public Map clientData;
+    public boolean afterUtt;
 
     @Override
     public boolean equals(Object o) {
@@ -44,6 +45,7 @@ public class Postback {
 
         Postback postback = (Postback) o;
 
+        if (afterUtt != postback.afterUtt) return false;
         if (payload != null ? !payload.equals(postback.payload) : postback.payload != null)
             return false;
         return clientData != null ? clientData.equals(postback.clientData) : postback.clientData == null;
@@ -54,6 +56,7 @@ public class Postback {
     public int hashCode() {
         int result = payload != null ? payload.hashCode() : 0;
         result = 31 * result + (clientData != null ? clientData.hashCode() : 0);
+        result = 31 * result + (afterUtt ? 1 : 0);
         return result;
     }
 
@@ -62,7 +65,7 @@ public class Postback {
         return "Postback{" +
                 "payload='" + payload + '\'' +
                 ", clientData=" + clientData +
+                ", afterUtt=" + afterUtt +
                 '}';
     }
-
 }

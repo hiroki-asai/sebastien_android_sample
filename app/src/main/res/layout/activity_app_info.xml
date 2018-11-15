@@ -82,7 +82,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:paddingTop="12dp"
-            android:text="バージョン"
+            android:text="アプリバージョン"
             android:textColor="#808080"
             android:textSize="14sp" />
 
@@ -91,6 +91,23 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
+            android:textColor="@android:color/black"
+            android:textSize="20sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:paddingTop="12dp"
+            android:text="SDKバージョン"
+            android:textColor="#808080"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:text="@string/sdk_version"
             android:textColor="@android:color/black"
             android:textSize="20sp" />
 

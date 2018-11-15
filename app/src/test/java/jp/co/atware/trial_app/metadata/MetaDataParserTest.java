@@ -135,6 +135,7 @@ public class MetaDataParserTest {
         meta.postback = new Postback();
         meta.postback.payload = "#DDB";
         meta.postback.clientData = Collections.emptyMap();
+        meta.postback.afterUtt = true;
 
         execute("text.json", meta);
     }

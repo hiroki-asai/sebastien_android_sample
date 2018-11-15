@@ -12,7 +12,8 @@
     },
     "postback": {
       "payload": "#DDB",
-      "clientData": {}
+      "clientData": {},
+      "afterUtt":true
     },
     "balloon": [
       {
